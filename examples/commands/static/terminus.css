@@ -1,0 +1,150 @@
+/* Terminus Terminal Styles */
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background-color: #1e1e1e;
+    color: #d4d4d4;
+    font-family: 'Consolas', 'Monaco', 'Lucida Console', 'Liberation Mono', 
+                 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Courier New', monospace;
+    overflow: hidden;
+}
+
+#terminal-container {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.terminal {
+    width: 100%;
+    height: 100%;
+    max-width: 1200px;
+    max-height: 800px;
+    background-color: #000000;
+    color: #cccccc;
+    padding: 10px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-size: 16px;
+    line-height: 1.4;
+    border: 1px solid #333;
+    border-radius: 4px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    cursor: text;
+}
+
+.terminal:focus {
+    outline: none;
+    border-color: #555;
+}
+
+/* Scrollbar styles */
+.terminal::-webkit-scrollbar {
+    width: 12px;
+}
+
+.terminal::-webkit-scrollbar-track {
+    background: #1e1e1e;
+    border-radius: 4px;
+}
+
+.terminal::-webkit-scrollbar-thumb {
+    background: #333;
+    border-radius: 4px;
+}
+
+.terminal::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Cursor styles */
+.cursor {
+    display: inline-block;
+    width: 2px;
+    height: 1.2em;
+    background-color: #cccccc;
+    animation: blink 1s infinite;
+    vertical-align: text-bottom;
+    margin-left: 1px;
+}
+
+.cursor.block {
+    width: 0.6em;
+    height: 1.2em;
+    background-color: rgba(204, 204, 204, 0.5);
+}
+
+@keyframes blink {
+    0%, 49% { opacity: 1; }
+    50%, 100% { opacity: 0; }
+}
+
+/* ANSI color classes */
+.ansi-black { color: #000000; }
+.ansi-red { color: #cc0000; }
+.ansi-green { color: #00cc00; }
+.ansi-yellow { color: #cccc00; }
+.ansi-blue { color: #0000cc; }
+.ansi-magenta { color: #cc00cc; }
+.ansi-cyan { color: #00cccc; }
+.ansi-white { color: #cccccc; }
+.ansi-bright-black { color: #808080; }
+.ansi-bright-red { color: #ff0000; }
+.ansi-bright-green { color: #00ff00; }
+.ansi-bright-yellow { color: #ffff00; }
+.ansi-bright-blue { color: #0000ff; }
+.ansi-bright-magenta { color: #ff00ff; }
+.ansi-bright-cyan { color: #00ffff; }
+.ansi-bright-white { color: #ffffff; }
+
+.ansi-bg-black { background-color: #000000; }
+.ansi-bg-red { background-color: #cc0000; }
+.ansi-bg-green { background-color: #00cc00; }
+.ansi-bg-yellow { background-color: #cccc00; }
+.ansi-bg-blue { background-color: #0000cc; }
+.ansi-bg-magenta { background-color: #cc00cc; }
+.ansi-bg-cyan { background-color: #00cccc; }
+.ansi-bg-white { background-color: #cccccc; }
+.ansi-bg-bright-black { background-color: #808080; }
+.ansi-bg-bright-red { background-color: #ff0000; }
+.ansi-bg-bright-green { background-color: #00ff00; }
+.ansi-bg-bright-yellow { background-color: #ffff00; }
+.ansi-bg-bright-blue { background-color: #0000ff; }
+.ansi-bg-bright-magenta { background-color: #ff00ff; }
+.ansi-bg-bright-cyan { background-color: #00ffff; }
+.ansi-bg-bright-white { background-color: #ffffff; }
+
+/* Text decoration styles */
+.ansi-bold { font-weight: bold; }
+.ansi-faint { opacity: 0.7; }
+.ansi-italic { font-style: italic; }
+.ansi-underline { text-decoration: underline; }
+.ansi-blink { animation: blink 1s infinite; }
+.ansi-reverse { 
+    filter: invert(1);
+    -webkit-filter: invert(1);
+}
+.ansi-hidden { visibility: hidden; }
+.ansi-strikethrough { text-decoration: line-through; }
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    #terminal-container {
+        padding: 10px;
+    }
+    
+    .terminal {
+        font-size: 14px;
+        padding: 8px;
+    }
+}

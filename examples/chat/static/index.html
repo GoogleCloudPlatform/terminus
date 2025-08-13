@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TerminusGo Chat</title>
+    <link rel="stylesheet" href="/terminus.css">
+    <style>
+        /* Connection status indicator */
+        #status {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-size: 12px;
+            z-index: 1000;
+        }
+        
+        #status.connected {
+            background-color: #0dbc79;
+            color: #000;
+        }
+        
+        #status.disconnected {
+            background-color: #cd3131;
+            color: #fff;
+        }
+        
+        #status.connecting {
+            background-color: #e5e510;
+            color: #000;
+        }
+    </style>
+</head>
+<body>
+    <div id="status" class="connecting">Connecting...</div>
+    <div id="terminal-container">
+        <div class="terminal" id="terminal" tabindex="0">Connecting...</div>
+    </div>
+    
+    <script src="/terminus-client.js"></script>
+    <script>
+        // Initialize the TerminusGo client
+        // The client script will handle all WebSocket communication,
+        // input capture, and rendering
+        window.addEventListener('DOMContentLoaded', () => {
+            // Client will auto-initialize when loaded
+            console.log('TerminusGo Chat client loaded');
+        });
+    </script>
+</body>
+</html>
