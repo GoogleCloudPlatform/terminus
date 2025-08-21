@@ -1,5 +1,7 @@
 # Terminus
 
+
+
 A Go framework for building terminal-style user interfaces that run in web browsers. Terminus brings the simplicity and power of terminal UIs to the web, using a Model-View-Update (MVU) architecture similar to Elm.
 
 ## ✨ Features
@@ -210,3 +212,11 @@ Terminus is inspired by:
 
 ---
 Happy coding! 🚀
+
+**NOTE**
+This project is a demonstration of vibe coding intended to provide a trustworthy and verifiable example that developers and researchers can use. It is not intended
+for use in a production environment.
+
+This is not an officially supported Google product. This project is not
+eligible for the [Google Open Source Software Vulnerability Rewards
+Program](https://bughunters.google.com/open-source-security).
