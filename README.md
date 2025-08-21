@@ -51,7 +51,7 @@ Loading indicators with:
 ### Installation
 
 ```bash
-go get github.com/yourusername/terminusgo
+go get github.com/GoogleCloudPlatform/terminus
 ```
 
 ### Hello World Example
@@ -62,9 +62,9 @@ package main
 import (
     "fmt"
     "log"
-    
-    "github.com/yourusername/terminusgo/pkg/terminus"
-    "github.com/yourusername/terminusgo/pkg/terminus/style"
+
+    "github.com/GoogleCloudPlatform/terminus/pkg/terminus"
+    "github.com/GoogleCloudPlatform/terminus/terminus/style"
 )
 
 type HelloWorld struct {
@@ -94,7 +94,7 @@ func (h *HelloWorld) View() string {
     title := style.New().Bold(true).Foreground(style.Cyan).Render("Terminus Counter")
     counter := style.New().Bold(true).Render(fmt.Sprintf("Count: %d", h.count))
     help := style.New().Faint(true).Render("↑/↓ to change • ESC to quit")
-    
+
     return fmt.Sprintf("%s\n\n%s\n\n%s", title, counter, help)
 }
 
@@ -103,7 +103,7 @@ func main() {
         func() terminus.Component { return &HelloWorld{} },
         terminus.WithAddress(":8080"),
     )
-    
+
     fmt.Println("Starting on http://localhost:8080")
     if err := program.Start(); err != nil {
         log.Fatal(err)
@@ -199,7 +199,7 @@ Please see our [Contributing Guide](CONTRIBUTING.md) (coming soon).
 
 ## 📄 License
 
-This project is licensed under the Apache License 2.0.
+This project is licensed under the Apache 2.0 License.
 
 ## 🙏 Acknowledgments
 
