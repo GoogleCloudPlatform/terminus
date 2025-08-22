@@ -1,8 +1,14 @@
 # Terminus
 
-
-
 A Go framework for building terminal-style user interfaces that run in web browsers. Terminus brings the simplicity and power of terminal UIs to the web, using a Model-View-Update (MVU) architecture similar to Elm.
+
+**NOTE**
+This project is a demonstration of vibe coding intended to provide a trustworthy and verifiable example that developers and researchers can use. It is not intended
+for use in a production environment.
+
+This is not an officially supported Google product. This project is not
+eligible for the [Google Open Source Software Vulnerability Rewards
+Program](https://bughunters.google.com/open-source-security).
 
 ## ✨ Features
 
@@ -18,7 +24,9 @@ A Go framework for building terminal-style user interfaces that run in web brows
 ## Widget Library
 
 ### TextInput
+
 Full-featured text input with:
+
 - Cursor movement and text editing
 - Validation support
 - Placeholder text
@@ -26,7 +34,9 @@ Full-featured text input with:
 - Custom styling for all states
 
 ### List
+
 Scrollable lists with:
+
 - Keyboard navigation
 - Real-time filtering
 - Custom item rendering
@@ -34,7 +44,9 @@ Scrollable lists with:
 - Wrap-around navigation
 
 ### Table
+
 Data tables with:
+
 - Sortable columns
 - Cell/row selection
 - Custom alignment
@@ -42,7 +54,9 @@ Data tables with:
 - Header customization
 
 ### Spinner
+
 Loading indicators with:
+
 - Multiple animation styles
 - Custom characters
 - Configurable speed
@@ -125,17 +139,17 @@ func main() {
 
 Explore our example applications:
 
-| Example | Description | Run Command |
-|---------|-------------|-------------|
-| **Hello World** | Simple starter app | `go run ./examples/hello/` |
-| **Todo List** | Task management with persistence | `go run ./examples/todo/` |
-| **Chat** | Real-time messaging | `go run ./examples/chat/` |
-| **Dashboard** | Complex layouts | `go run ./examples/dashboard/` |
-| **Widgets** | All widgets showcase | `go run ./examples/widgets/` |
-| **Text Input** | Forms with validation | `go run ./examples/textinput/` |
-| **Commands** | Advanced command usage | `go run ./examples/commands/` |
-| **Layout** | Layout system demo | `go run ./examples/layout/` |
-| **Gemini Chat** | AI chat with Google Gemini | `go run ./examples/gemini_chat/` |
+| Example         | Description                      | Run Command                      |
+| --------------- | -------------------------------- | -------------------------------- |
+| **Hello World** | Simple starter app               | `go run ./examples/hello/`       |
+| **Todo List**   | Task management with persistence | `go run ./examples/todo/`        |
+| **Chat**        | Real-time messaging              | `go run ./examples/chat/`        |
+| **Dashboard**   | Complex layouts                  | `go run ./examples/dashboard/`   |
+| **Widgets**     | All widgets showcase             | `go run ./examples/widgets/`     |
+| **Text Input**  | Forms with validation            | `go run ./examples/textinput/`   |
+| **Commands**    | Advanced command usage           | `go run ./examples/commands/`    |
+| **Layout**      | Layout system demo               | `go run ./examples/layout/`      |
+| **Gemini Chat** | AI chat with Google Gemini       | `go run ./examples/gemini_chat/` |
 
 All examples run on `http://localhost:8890` by default.
 
@@ -155,6 +169,7 @@ Terminus uses a unique server-side architecture:
 ```
 
 Key benefits:
+
 - **Zero client-side state** - All logic stays in Go
 - **Automatic UI updates** - Just update your model
 - **Secure by default** - No client-side code execution
@@ -163,6 +178,7 @@ Key benefits:
 ## 🛠️ Development Status
 
 ### ✅ Completed
+
 - Core MVU engine with component system
 - WebSocket communication layer
 - Session management
@@ -175,12 +191,14 @@ Key benefits:
 - Enhanced JavaScript client with full color support
 
 ### 🚧 In Progress
+
 - Performance optimizations
 - Mouse support
 - Browser compatibility testing
 - Security hardening
 
 ### 📋 Planned
+
 - Additional widgets (Progress, Select, Tree)
 - Hot reload for development
 - DevTools browser extension
@@ -206,17 +224,11 @@ This project is licensed under the Apache 2.0 License.
 ## 🙏 Acknowledgments
 
 Terminus is inspired by:
+
 - [Bubble Tea](https://github.com/charmbracelet/bubbletea) - Terminal UI framework for Go
 - [Elm](https://elm-lang.org/) - The MVU architecture
 - Terminal emulators and their rich history
 
 ---
+
 Happy coding! 🚀
-
-**NOTE**
-This project is a demonstration of vibe coding intended to provide a trustworthy and verifiable example that developers and researchers can use. It is not intended
-for use in a production environment.
-
-This is not an officially supported Google product. This project is not
-eligible for the [Google Open Source Software Vulnerability Rewards
-Program](https://bughunters.google.com/open-source-security).
