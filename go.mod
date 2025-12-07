@@ -1,8 +1,6 @@
 module github.com/yourusername/terminusgo
 
-go 1.23.0
-
-toolchain go1.24.0
+go 1.24.0
 
 require github.com/gorilla/websocket v1.5.1
 
@@ -29,7 +27,8 @@ require (
 	golang.org/x/crypto v0.38.0 // indirect
 	golang.org/x/oauth2 v0.30.0 // indirect
 	golang.org/x/sync v0.14.0 // indirect
-	golang.org/x/sys v0.33.0 // indirect
+	golang.org/x/sys v0.38.0 // indirect
+	golang.org/x/term v0.37.0 // indirect
 	golang.org/x/text v0.25.0 // indirect
 	golang.org/x/time v0.11.0 // indirect
 	google.golang.org/api v0.236.0 // indirect

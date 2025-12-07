@@ -16,6 +16,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -30,20 +31,16 @@ import (
 )
 
 func main() {
+	serverAddr := flag.String("addr", "localhost:8890", "Terminus server address")
+	flag.Parse()
+
 	log.SetFlags(0) // Disable timestamping for log messages
 	log.SetOutput(os.Stderr) // Log to stderr
 	
 	fmt.Println("Terminus CLI client")
 
-	// Put terminal into raw mode
-	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
-	if err != nil {
-		log.Fatalf("Failed to put terminal into raw mode: %v", err)
-	}
-	defer term.Restore(int(os.Stdin.Fd()), oldState)
-
 	// Define WebSocket server URL
-	u := url.URL{Scheme: "ws", Host: "localhost:8080", Path: "/ws"}
+	u := url.URL{Scheme: "ws", Host: *serverAddr, Path: "/ws"}
 	fmt.Printf("Connecting to %s\n", u.String())
 
 	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
