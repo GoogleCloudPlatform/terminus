@@ -305,47 +305,16 @@ style.New().
 
 ## Custom Static Files
 
-To use custom HTML, CSS, or include additional JavaScript:
+Terminus comes with built-in static files (HTML, JS, CSS) to run your application. You don't need to configure anything to get started.
 
-### 1. Create a static directory
-
-```bash
-mkdir static
-```
-
-### 2. Add your files
-
-`static/index.html`:
-```html
-<!DOCTYPE html>
-<html>
-<head>
-    <title>My Terminus App</title>
-    <link rel="stylesheet" href="/terminus.css">
-</head>
-<body>
-    <div id="terminal-container">
-        <div id="terminal" class="terminal" tabindex="0"></div>
-    </div>
-    <script src="/terminus-client.js"></script>
-</body>
-</html>
-```
-
-### 3. Embed and serve the files
+If you need to customize the HTML or CSS, you can serve your own files by wrapping the Terminus handler.
 
 ```go
-import "embed"
-
-//go:embed all:static/*
-var staticFiles embed.FS
-
 func main() {
     program := terminus.NewProgram(
         func() terminus.Component {
             return NewMyComponent()
         },
-        terminus.WithStaticFiles(staticFiles, "static"),
     )
     // ...
 }
