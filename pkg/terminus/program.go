@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"io/fs"
 	"net/http"
+	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/gorilla/websocket"
@@ -76,6 +78,9 @@ func NewProgram(rootComponentFactory func() Component, opts ...ProgramOption) *P
 		},
 		ctx:    ctx,
 		cancel: cancel,
+		// Default to embedded assets
+		staticFS:   DefaultAssets,
+		staticPath: "assets",
 	}
 	
 	// Apply options
@@ -97,8 +102,10 @@ func (p *Program) Start() error {
 		if err != nil {
 			return fmt.Errorf("failed to create sub filesystem: %w", err)
 		}
+		
+		// Wrap with MIME type fixer
 		fileServer := http.FileServer(http.FS(subFS))
-		mux.Handle("/", fileServer)
+		mux.Handle("/", p.mimeFixer(fileServer))
 	} else {
 		// Serve default HTML if no static files configured
 		mux.HandleFunc("/", p.handleIndex)
@@ -122,6 +129,31 @@ func (p *Program) Start() error {
 	}()
 	
 	return nil
+}
+
+// mimeFixer wraps an http.Handler and sets Content-Type based on file extension
+func (p *Program) mimeFixer(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
+		ext := strings.ToLower(filepath.Ext(path))
+		
+		switch ext {
+		case ".html":
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		case ".js":
+			w.Header().Set("Content-Type", "application/javascript")
+		case ".css":
+			w.Header().Set("Content-Type", "text/css")
+		case ".wasm":
+			w.Header().Set("Content-Type", "application/wasm")
+		case ".png":
+			w.Header().Set("Content-Type", "image/png")
+		case ".ico":
+			w.Header().Set("Content-Type", "image/x-icon")
+		}
+		
+		next.ServeHTTP(w, r)
+	})
 }
 
 // Stop gracefully shuts down the program

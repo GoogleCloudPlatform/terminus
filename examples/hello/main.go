@@ -15,16 +15,12 @@
 package main
 
 import (
-	"embed"
 	"fmt"
 	"log"
 
 	"github.com/yourusername/terminusgo/pkg/terminus"
 	"github.com/yourusername/terminusgo/pkg/terminus/style"
 )
-
-//go:embed all:static/*
-var staticFiles embed.FS
 
 // HelloModel represents the state of our Hello World application
 type HelloModel struct {
@@ -169,7 +165,6 @@ func main() {
 		func() terminus.Component {
 			return NewHelloComponent()
 		},
-		terminus.WithStaticFiles(staticFiles, "static"),
 		terminus.WithAddress(":8890"),
 	)
 
