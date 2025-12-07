@@ -64,6 +64,17 @@ func (h *HelloComponent) Update(msg terminus.Msg) (terminus.Component, terminus.
 	// Handle different types of messages
 	switch msg := msg.(type) {
 	case terminus.KeyMsg:
+		// Check for global quit commands first
+		switch msg.String() {
+		case "q":
+			// Don't quit if we are typing a name
+			if !h.model.collectingName {
+				return h, terminus.Quit
+			}
+		case "ctrl+c":
+			return h, terminus.Quit
+		}
+
 		// Handle keyboard input
 		switch msg.Type {
 		case terminus.KeyEnter:
@@ -99,11 +110,8 @@ func (h *HelloComponent) Update(msg terminus.Msg) (terminus.Component, terminus.
 			return h, nil
 		}
 
-		// Handle specific key strings
+		// Handle specific key strings (non-quit)
 		switch msg.String() {
-		case "q", "ctrl+c":
-			// Quit the application
-			return h, terminus.Quit
 		case "r":
 			// Reset the application
 			if !h.model.collectingName {
