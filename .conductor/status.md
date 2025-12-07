@@ -12,9 +12,9 @@ All core refactoring tasks, example validations, and developer tooling updates a
 - **Developer Experience:**
     - **Makefile:** Updated with a `help` command and dedicated `build-cli`/`run-cli` targets.
     - **Documentation:** `README.md` reflects the new architecture and usage instructions.
-- **Bug Fixes:**
-    - Fixed critical input handling issues (modifier keys support for shortcuts like `Shift+Tab`).
-    - Resolved cursor rendering and blinking issues in the `TextInput` widget.
+- **Bug Fixes & Refinements:**
+    - Fixed critical input handling issues (modifier keys support for shortcuts like `Shift+Tab`, `Ctrl+S`, `Ctrl+R`).
+    - Resolved cursor rendering issues: now uses a non-blinking solid block cursor that is always visible when focused.
     - Fixed a syntax error in session management logic.
     - Corrected asset embedding to ensure the web client loads reliably without 404s.
     - **Build Fix:** Removed invalid `//go:embed` directives from examples.

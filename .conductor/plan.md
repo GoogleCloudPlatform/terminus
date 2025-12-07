@@ -75,3 +75,16 @@
 - [x] **Fix Example Embeds:** Remove invalid `//go:embed` directives from `examples/textinput` and other examples that no longer have local static files.
 - [x] **Fix Race Conditions:** Resolve data races in `cancel_test.go`, `engine_test.go`, and `session_test.go`.
 - [x] **Fix Example Compilation:** Remove undefined `staticFiles` references in examples.
+
+## Phase 7: Fix Input and Cursor Issues
+**Goal:** Resolve user-reported issues with keyboard shortcuts and cursor visibility in the `textinput` example.
+
+- [x] **Fix Key Handling:** Debug and fix `Ctrl+S`, `Ctrl+R`, and `Shift+Tab` support in both Web and CLI clients.
+- [x] **Fix Cursor Rendering:** Ensure cursor appears on startup and blinks correctly in the `TextInput` widget.
+
+## Phase 8: Refine UX based on Feedback
+**Goal:** Address user feedback regarding cursor style and input shortcuts not working.
+
+- [x] **Fix Cursor Style:** Change cursor to a non-blinking solid block (reversed space).
+- [x] **Fix Web Input Interception:** Add `preventDefault` for `Ctrl+S` and `Ctrl+R` in `terminus-client.js` to prevent browser default actions.
+- [x] **Verify CLI Input:** Investigate why `Ctrl+S` might be failing in CLI (potentially flow control).
