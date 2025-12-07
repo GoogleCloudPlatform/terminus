@@ -54,7 +54,7 @@ func NewTextInput() *TextInput {
 	return &TextInput{
 		Model:           NewModel(),
 		showCursor:      true,
-		cursorChar:      '|',
+		cursorChar:      ' ', // Solid block cursor
 		maxLength:       100,
 		style:           terminus.NewStyle(),
 		focusStyle:      terminus.NewStyle().Underline(true),
@@ -133,6 +133,11 @@ func (t *TextInput) SetCursorStyle(style terminus.Style) *TextInput {
 func (t *TextInput) SetCursorChar(char rune) *TextInput {
 	t.cursorChar = char
 	return t
+}
+
+// Focus sets the widget as focused
+func (t *TextInput) Focus() {
+	t.Model.Focus()
 }
 
 // Init implements the Component interface
