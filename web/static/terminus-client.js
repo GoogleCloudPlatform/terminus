@@ -101,6 +101,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         let keyData = { keyType: 'runes', runes: [] };
 
         // Basic control code mapping
+        let modifiers = { alt: false, ctrl: false, shift: false };
+        
         switch (data) {
             case '\r': // Enter
                 keyData.keyType = 'enter';
@@ -111,11 +113,24 @@ document.addEventListener('DOMContentLoaded', async () => {
             case '\t': // Tab
                 keyData.keyType = 'tab';
                 break;
+            case '\x1b[Z': // Shift+Tab
+                keyData.keyType = 'tab';
+                modifiers.shift = true;
+                break;
             case '\x1b': // Escape
                 keyData.keyType = 'escape';
                 break;
             case '\x03': // Ctrl+C
                 keyData.keyType = 'ctrl+c';
+                modifiers.ctrl = true;
+                break;
+            case '\x12': // Ctrl+R
+                keyData.keyType = 'ctrl+r';
+                modifiers.ctrl = true;
+                break;
+            case '\x13': // Ctrl+S
+                keyData.keyType = 'ctrl+s';
+                modifiers.ctrl = true;
                 break;
             case ' ':
                 keyData.keyType = 'space';
@@ -145,7 +160,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const clientMessage = {
             Type: msgType,
-            Data: keyData,
+            Data: { ...keyData, modifiers },
         };
         ws.send(JSON.stringify(clientMessage));
     });

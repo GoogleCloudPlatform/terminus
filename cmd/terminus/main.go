@@ -72,7 +72,7 @@ func main() {
 	// Goroutine to read stdin and send to WebSocket
 	go func() {
 		defer close(done)
-		buf := make([]byte, 1)
+		buf := make([]byte, 1024)
 		for {
 			n, err := os.Stdin.Read(buf)
 			if err != nil {
@@ -85,71 +85,126 @@ func main() {
 			}
 			
 			if n > 0 {
-				char := buf[0]
-				log.Printf("Read byte: %d (%q)", char, char)
-
-				// Wrap raw input in JSON protocol
-				var msg ClientMessage
+				data := buf[:n]
 				
-				// Basic mapping for control characters
-				switch {
-				case char == '\r' || char == '\n': // Enter (Handle both CR and LF)
-					log.Println("Detected Enter")
-					msg = ClientMessage{
-						Type: "key",
-						Data: map[string]interface{}{"keyType": "enter"},
-					}
-				case char == '\x7f' || char == '\b': // Backspace (Handle DEL and BS)
-					msg = ClientMessage{
-						Type: "key",
-						Data: map[string]interface{}{"keyType": "backspace"},
-					}
-				case char == '\t': // Tab
-					msg = ClientMessage{
-						Type: "key",
-						Data: map[string]interface{}{"keyType": "tab"},
-					}
-				case char == '\x1b': // Escape
-					msg = ClientMessage{
-						Type: "key",
-						Data: map[string]interface{}{"keyType": "escape"},
-					}
-				case char == '\x03': // Ctrl+C
-					log.Println("Detected Ctrl+C, exiting...")
-					msg = ClientMessage{
-						Type: "key",
-						Data: map[string]interface{}{"keyType": "ctrl+c"},
-					}
-					// Send the message then exit
-					jsonBytes, _ := json.Marshal(msg)
-					c.WriteMessage(websocket.TextMessage, jsonBytes)
-					return 
-				case char == ' ': // Space
-					msg = ClientMessage{
-						Type: "key",
-						Data: map[string]interface{}{"keyType": "space"},
-					}
-				default:
-					// Treat as regular rune(s)
-					msg = ClientMessage{
+				// Check for known escape sequences first (simplistic handling)
+				s := string(data)
+				if s == "\x1b[Z" { // Shift+Tab
+					msg := ClientMessage{
 						Type: "key",
 						Data: map[string]interface{}{
-							"keyType": "runes",
-							"runes":   []string{string(char)},
+							"keyType": "tab",
+							"modifiers": map[string]bool{"shift": true},
 						},
+					}
+					jsonBytes, _ := json.Marshal(msg)
+					c.WriteMessage(websocket.TextMessage, jsonBytes)
+					continue
+				}
+				
+				// Handle other escape sequences (arrows)
+				if len(s) >= 3 && s[0] == '\x1b' && s[1] == '[' {
+					var keyType string
+					switch s[2] {
+					case 'A': keyType = "up"
+					case 'B': keyType = "down"
+					case 'C': keyType = "right"
+					case 'D': keyType = "left"
+					}
+					if keyType != "" {
+						msg := ClientMessage{
+							Type: "key",
+							Data: map[string]interface{}{"keyType": keyType},
+						}
+						jsonBytes, _ := json.Marshal(msg)
+						c.WriteMessage(websocket.TextMessage, jsonBytes)
+						continue
 					}
 				}
 
-				jsonBytes, err := json.Marshal(msg)
-				if err != nil {
-					log.Printf("Error marshaling key message: %v", err)
-					continue
-				}
+				// If not a known sequence, process byte by byte
+				// Note: This breaks if an unknown escape sequence is split or mixed with text
+				for _, char := range data {
+					log.Printf("Read byte: %d (%q)", char, char)
 
-				err = c.WriteMessage(websocket.TextMessage, jsonBytes)
-				if err != nil {
-					log.Printf("Error writing to WebSocket: %v", err)
-					return
+					var msg ClientMessage
+					
+					switch {
+					case char == '\r' || char == '\n': // Enter
+						msg = ClientMessage{
+							Type: "key",
+							Data: map[string]interface{}{"keyType": "enter"},
+						}
+					case char == '\x7f' || char == '\b': // Backspace
+						msg = ClientMessage{
+							Type: "key",
+							Data: map[string]interface{}{"keyType": "backspace"},
+						}
+					case char == '\t': // Tab
+						msg = ClientMessage{
+							Type: "key",
+							Data: map[string]interface{}{"keyType": "tab"},
+						}
+					case char == '\x1b': // Escape (lonely escape)
+						msg = ClientMessage{
+							Type: "key",
+							Data: map[string]interface{}{"keyType": "escape"},
+						}
+					case char == '\x03': // Ctrl+C
+						log.Println("Detected Ctrl+C, exiting...")
+						msg = ClientMessage{
+							Type: "key",
+							Data: map[string]interface{}{
+								"keyType": "ctrl+c",
+								"modifiers": map[string]bool{"ctrl": true},
+							},
+						}
+						jsonBytes, _ := json.Marshal(msg)
+						c.WriteMessage(websocket.TextMessage, jsonBytes)
+						return 
+					case char == '\x12': // Ctrl+R
+						msg = ClientMessage{
+							Type: "key",
+							Data: map[string]interface{}{
+								"keyType": "ctrl+r",
+								"modifiers": map[string]bool{"ctrl": true},
+							},
+						}
+					case char == '\x13': // Ctrl+S
+						msg = ClientMessage{
+							Type: "key",
+							Data: map[string]interface{}{
+								"keyType": "ctrl+s",
+								"modifiers": map[string]bool{"ctrl": true},
+							},
+						}
+					case char == ' ': // Space
+						msg = ClientMessage{
+							Type: "key",
+							Data: map[string]interface{}{"keyType": "space"},
+						}
+					default:
+						// Treat as regular rune
+						msg = ClientMessage{
+							Type: "key",
+							Data: map[string]interface{}{
+								"keyType": "runes",
+								"runes":   []string{string(char)},
+							},
+						}
+					}
+
+					jsonBytes, err := json.Marshal(msg)
+					if err != nil {
+						log.Printf("Error marshaling key message: %v", err)
+						continue
+					}
+
+					err = c.WriteMessage(websocket.TextMessage, jsonBytes)
+					if err != nil {
+						log.Printf("Error writing to WebSocket: %v", err)
+						return
+					}
 				}
 			}
 		}

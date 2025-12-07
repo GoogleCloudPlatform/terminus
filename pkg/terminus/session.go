@@ -255,6 +255,25 @@ func (s *Session) clientToTerminusMessage(msg ClientMessage) Msg {
 		if keyData, ok := msg.Data.(map[string]interface{}); ok {
 			keyType, _ := keyData["keyType"].(string)
 			
+			// Parse modifiers
+			var alt, ctrl, shift bool
+			if mods, ok := keyData["modifiers"].(map[string]interface{}); ok {
+				alt, _ = mods["alt"].(bool)
+				ctrl, _ = mods["ctrl"].(bool)
+				shift, _ = mods["shift"].(bool)
+			}
+			
+			// Helper to create KeyMsg with modifiers
+			newKeyMsg := func(t KeyType, runes ...rune) KeyMsg {
+				return KeyMsg{
+					Type:  t,
+					Runes: runes,
+					Alt:   alt,
+					Ctrl:  ctrl,
+					Shift: shift,
+				}
+			}
+
 			// Handle different key types
 			switch keyType {
 			case "runes":
@@ -267,28 +286,32 @@ func (s *Session) clientToTerminusMessage(msg ClientMessage) Msg {
 							runes = append(runes, []rune(str)[0])
 						}
 					}
-					return KeyMsg{Type: KeyRunes, Runes: runes}
+					return newKeyMsg(KeyRunes, runes...)
 				}
 			case "enter":
-				return KeyMsg{Type: KeyEnter}
+				return newKeyMsg(KeyEnter)
 			case "space":
-				return KeyMsg{Type: KeySpace}
+				return newKeyMsg(KeySpace)
 			case "backspace":
-				return KeyMsg{Type: KeyBackspace}
+				return newKeyMsg(KeyBackspace)
 			case "tab":
-				return KeyMsg{Type: KeyTab}
+				return newKeyMsg(KeyTab)
 			case "escape":
-				return KeyMsg{Type: KeyEsc}
+				return newKeyMsg(KeyEsc)
 			case "up":
-				return KeyMsg{Type: KeyUp}
+				return newKeyMsg(KeyUp)
 			case "down":
-				return KeyMsg{Type: KeyDown}
+				return newKeyMsg(KeyDown)
 			case "left":
-				return KeyMsg{Type: KeyLeft}
+				return newKeyMsg(KeyLeft)
 			case "right":
-				return KeyMsg{Type: KeyRight}
+				return newKeyMsg(KeyRight)
 			case "ctrl+c":
-				return KeyMsg{Type: KeyCtrlC}
+				return newKeyMsg(KeyCtrlC)
+			case "ctrl+r":
+				return newKeyMsg(KeyCtrlR)
+			case "ctrl+s":
+				return newKeyMsg(KeyCtrlS)
 			}
 		}
 		
