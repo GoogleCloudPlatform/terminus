@@ -74,3 +74,4 @@
 
 - [x] **Fix Example Embeds:** Remove invalid `//go:embed` directives from `examples/textinput` and other examples that no longer have local static files.
 - [x] **Fix Race Conditions:** Resolve data races in `cancel_test.go`, `engine_test.go`, and `session_test.go`.
+- [x] **Fix Example Compilation:** Remove undefined `staticFiles` references in examples.
