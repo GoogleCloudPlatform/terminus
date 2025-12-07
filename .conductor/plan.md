@@ -73,4 +73,4 @@
 **Goal:** Resolve build errors and race conditions identified by `make test`.
 
 - [x] **Fix Example Embeds:** Remove invalid `//go:embed` directives from `examples/textinput` and other examples that no longer have local static files.
-- [ ] **Fix Race Conditions:** Resolve data races in `cancel_test.go`, `engine_test.go`, and `session_test.go`.
+- [x] **Fix Race Conditions:** Resolve data races in `cancel_test.go`, `engine_test.go`, and `session_test.go`.
