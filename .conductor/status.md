@@ -17,8 +17,10 @@ All core refactoring tasks, example validations, and developer tooling updates a
     - Resolved cursor rendering and blinking issues in the `TextInput` widget.
     - Fixed a syntax error in session management logic.
     - Corrected asset embedding to ensure the web client loads reliably without 404s.
+    - **Build Fix:** Removed invalid `//go:embed` directives from examples, ensuring `make test` setup phase passes.
 
 ## Current State:
 The project is stable and ready for use.
 - **Web:** Run `go run examples/<name>/main.go` and visit `http://localhost:8890`.
 - **CLI:** Run `make run-cli` (after starting a server) to connect via the terminal.
+- **Tests:** `make test` is now running, but race conditions are being addressed.

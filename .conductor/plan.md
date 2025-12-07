@@ -47,3 +47,30 @@
 - [x] **Update Makefile:** Add help command and CLI build/run targets.
 
 ## Phase 5: Example Updates & Fixes
+**Goal:** Ensure all examples function correctly with the new architecture and fix bugs discovered during validation.
+
+- [x] **Update Examples:**
+    - Refactor all `examples/**` to remove local static file embedding (since assets are now centralized in `pkg/terminus/assets`).
+    - Simplify `main.go` in all examples to usage `terminus.NewProgram` without deprecated `WithStaticFiles`.
+- [x] **Fix CLI Input:**
+    - Update `terminus-cli` to wrap keyboard input in the JSON protocol expected by the server (`sendKey` helper).
+    - Implement local `Ctrl+C` handling for safe exit.
+    - Support `-addr` flag for connecting to arbitrary hosts.
+- [x] **Fix Web Client Input:**
+    - Update `terminus-client.js` to correctly capture and send keyboard modifiers (`Alt`, `Ctrl`, `Shift`, `Meta`).
+    - Add support for functional keys (`F1-F12`, `Home`, `End`, etc.).
+- [x] **Fix Session Logic:**
+    - Update `session.go` to parse modifiers from the JSON client message.
+    - Restore missing logic in `clientToTerminusMessage` (specifically the `resize` case that was truncated).
+- [x] **Fix Widget Rendering:**
+    - Update `widget/textinput.go` to fix cursor rendering issues (padding vs character positioning).
+    - Enable blinking cursor support in styles and the client parser.
+- [x] **Fix Asset Embedding:**
+    - Create `pkg/terminus/assets.go` to embed the `assets/` directory.
+    - Update `program.go` to correctly serve these embedded assets with the standard `http.FileServer`.
+
+## Phase 6: Fix Test Failures
+**Goal:** Resolve build errors and race conditions identified by `make test`.
+
+- [x] **Fix Example Embeds:** Remove invalid `//go:embed` directives from `examples/textinput` and other examples that no longer have local static files.
+- [ ] **Fix Race Conditions:** Resolve data races in `cancel_test.go`, `engine_test.go`, and `session_test.go`.
