@@ -56,8 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 3. Data Flow (Server to Terminal) ---
     ws.onmessage = (event) => {
-        // Assuming the server sends raw ANSI escape sequences directly.
-        // Ghostty-Web's write method should handle this.
+        // The server sends raw ANSI strings directly.
         terminal.write(event.data);
     };
 
@@ -179,9 +178,30 @@ class GhosttyTerminal {
 
     write(data) {
         if (this.preElement) {
-            // Very basic ANSI interpretation for dummy terminal: just append.
-            // A real terminal would interpret CSI sequences, colors, etc.
-            this.preElement.innerHTML += this._escapeHtml(data);
+            // Very basic ANSI interpretation for dummy terminal: 
+            // 1. Strip ANSI escape codes to prevent "unreadable" characters.
+            // 2. Interpret some basic control codes like \r and \n.
+            // Note: A real terminal implementation (like xterm.js or the real Ghostty-Web) would interpret these correctly.
+            
+            // Regex to match ANSI escape codes (CSI sequences)
+            // \x1b\[[0-9;]*[a-zA-Z] matches things like ESC[31m or ESC[2J
+            const ansiRegex = /\x1b\[[0-9;]*[a-zA-Z]/g;
+            
+            // Clean the data of raw ANSI codes for the dummy display
+            const cleanData = data.replace(ansiRegex, '');
+
+            // Handle backspaces (basic implementation)
+            // This loop removes the character preceding a backspace
+            let processedData = '';
+            for (let i = 0; i < cleanData.length; i++) {
+                if (cleanData[i] === '\b' || cleanData[i] === '\x7f') { // Backspace or Delete
+                    processedData = processedData.slice(0, -1);
+                } else {
+                    processedData += cleanData[i];
+                }
+            }
+
+            this.preElement.innerHTML += this._escapeHtml(processedData);
             this.preElement.scrollTop = this.preElement.scrollHeight;
         }
     }
