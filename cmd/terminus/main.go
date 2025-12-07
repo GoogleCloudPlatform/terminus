@@ -69,9 +69,12 @@ func main() {
 
 	done := make(chan struct{}) // Channel to signal when to exit
 	
-	// Goroutine to read stdin and send to WebSocket
+	// Channel for input data
+	inputChan := make(chan []byte)
+	
+	// Goroutine to read stdin
 	go func() {
-		defer close(done)
+		defer close(inputChan)
 		buf := make([]byte, 1024)
 		for {
 			n, err := os.Stdin.Read(buf)
@@ -83,142 +86,186 @@ func main() {
 				}
 				return
 			}
-			
 			if n > 0 {
-				log.Printf("Read %d bytes: %v", n, buf[:n])
-				
-				i := 0
-				for i < n {
-					char := buf[i]
-					var msg ClientMessage
-					handled := false
+				// Copy data to avoid race conditions with buffer reuse
+				chunk := make([]byte, n)
+				copy(chunk, buf[:n])
+				inputChan <- chunk
+			}
+		}
+	}()
 
-					// Handle Escape Sequences
-					if char == '\x1b' {
-						remaining := n - i
-						// Shift+Tab: \x1b[Z
-						if remaining >= 3 && buf[i+1] == '[' && buf[i+2] == 'Z' {
-							log.Println("Detected Shift+Tab")
-							msg = ClientMessage{
-								Type: "key",
-								Data: map[string]interface{}{
-									"keyType": "tab",
-									"modifiers": map[string]bool{"shift": true},
-								},
-							}
-							i += 3
-							handled = true
-						} else if remaining >= 3 && buf[i+1] == '[' {
-							// Arrow keys: \x1b[A, \x1b[B, ...
-							var keyType string
-							switch buf[i+2] {
-							case 'A': keyType = "up"
-							case 'B': keyType = "down"
-							case 'C': keyType = "right"
-							case 'D': keyType = "left"
-							}
-							if keyType != "" {
-								log.Printf("Detected Arrow: %s", keyType)
-								msg = ClientMessage{
+	// Goroutine to parse input and send messages
+	go func() {
+		defer close(done)
+		
+		const (
+			StateNormal = iota
+			StateEsc
+			StateCSI
+		)
+		
+		state := StateNormal
+		var buffer []byte
+		
+		// Timer for escape sequence timeout
+		escapeTimer := time.NewTimer(50 * time.Millisecond)
+		if !escapeTimer.Stop() {
+			select {
+			case <-escapeTimer.C:
+			default:
+			}
+		}
+		
+		// Helper to send a message
+		sendMsg := func(msg ClientMessage) {
+			jsonBytes, err := json.Marshal(msg)
+			if err != nil {
+				log.Printf("Error marshaling key message: %v", err)
+				return
+			}
+			c.WriteMessage(websocket.TextMessage, jsonBytes)
+		}
+		
+		// Process a completed CSI sequence
+		handleCSI := func(seq []byte) {
+			if len(seq) < 3 { return } // Should be at least ESC [ X
+			
+			final := seq[len(seq)-1]
+			switch final {
+			case 'Z': // Shift+Tab: ESC [ Z
+				log.Println("Detected Shift+Tab")
+				sendMsg(ClientMessage{
+					Type: "key",
+					Data: map[string]interface{}{
+						"keyType": "tab",
+						"modifiers": map[string]bool{"shift": true},
+					},
+				})
+			case 'A': // Up
+				sendMsg(ClientMessage{Type: "key", Data: map[string]interface{}{"keyType": "up"}})
+			case 'B': // Down
+				sendMsg(ClientMessage{Type: "key", Data: map[string]interface{}{"keyType": "down"}})
+			case 'C': // Right
+				sendMsg(ClientMessage{Type: "key", Data: map[string]interface{}{"keyType": "right"}})
+			case 'D': // Left
+				sendMsg(ClientMessage{Type: "key", Data: map[string]interface{}{"keyType": "left"}})
+			default:
+				// Unknown sequence, treat as runes? Or ignore?
+				log.Printf("Unknown CSI sequence: %q", seq)
+			}
+		}
+		
+		// Helper to flush buffer as raw runes
+		flushBuffer := func() {
+			for _, b := range buffer {
+				// If it was an Escape that timed out
+				if b == '\x1b' {
+					sendMsg(ClientMessage{Type: "key", Data: map[string]interface{}{"keyType": "escape"}})
+				} else {
+					// Treat as rune
+					sendMsg(ClientMessage{
+						Type: "key",
+						Data: map[string]interface{}{
+							"keyType": "runes",
+							"runes":   []string{string(b)},
+						},
+					})
+				}
+			}
+			buffer = nil
+			state = StateNormal
+		}
+
+		for {
+			select {
+			case chunk, ok := <-inputChan:
+				if !ok {
+					return
+				}
+				
+				log.Printf("Read %d bytes: %v", len(chunk), chunk)
+				
+				for _, b := range chunk {
+					switch state {
+					case StateNormal:
+						if b == '\x1b' {
+							state = StateEsc
+							buffer = append(buffer, b)
+							escapeTimer.Reset(50 * time.Millisecond)
+						} else {
+							// Handle Normal Key
+							switch b {
+							case '\r', '\n':
+								sendMsg(ClientMessage{Type: "key", Data: map[string]interface{}{"keyType": "enter"}})
+							case '\x7f', '\b':
+								sendMsg(ClientMessage{Type: "key", Data: map[string]interface{}{"keyType": "backspace"}})
+							case '\t':
+								sendMsg(ClientMessage{Type: "key", Data: map[string]interface{}{"keyType": "tab"}})
+							case '\x03': // Ctrl+C
+								log.Println("Detected Ctrl+C")
+								sendMsg(ClientMessage{
+									Type: "key", 
+									Data: map[string]interface{}{"keyType": "ctrl+c", "modifiers": map[string]bool{"ctrl": true}},
+								})
+								return // Exit
+							case '\x12': // Ctrl+R
+								log.Println("Detected Ctrl+R")
+								sendMsg(ClientMessage{
 									Type: "key",
-									Data: map[string]interface{}{"keyType": keyType},
-								}
-								i += 3
-								handled = true
+									Data: map[string]interface{}{"keyType": "ctrl+r", "modifiers": map[string]bool{"ctrl": true}},
+								})
+							case '\x13': // Ctrl+S
+								log.Println("Detected Ctrl+S")
+								sendMsg(ClientMessage{
+									Type: "key",
+									Data: map[string]interface{}{"keyType": "ctrl+s", "modifiers": map[string]bool{"ctrl": true}},
+								})
+							case ' ':
+								sendMsg(ClientMessage{Type: "key", Data: map[string]interface{}{"keyType": "space"}})
+							default:
+								sendMsg(ClientMessage{
+									Type: "key",
+									Data: map[string]interface{}{
+										"keyType": "runes",
+										"runes":   []string{string(b)},
+									},
+								})
 							}
 						}
 						
-						// If not handled above, treat as isolated Escape if it's the last byte or not a known sequence
-						if !handled {
-							log.Println("Detected Escape")
-							msg = ClientMessage{
-								Type: "key",
-								Data: map[string]interface{}{"keyType": "escape"},
+					case StateEsc:
+						buffer = append(buffer, b)
+						if b == '[' {
+							state = StateCSI
+						} else {
+							// Not CSI (e.g. Alt+Key or SS3 \x1bO)
+							// For now, just flush (treat as Esc + Key)
+							// Ideally we handle \x1bO for F-keys here too
+							flushBuffer()
+							if !escapeTimer.Stop() {
+								select { case <-escapeTimer.C: default: }
 							}
-							i++ // Consume only the escape char
-							handled = true
+						}
+						
+					case StateCSI:
+						buffer = append(buffer, b)
+						// Check for final byte (0x40-0x7E)
+						if b >= 0x40 && b <= 0x7E {
+							handleCSI(buffer)
+							buffer = nil
+							state = StateNormal
+							if !escapeTimer.Stop() {
+								select { case <-escapeTimer.C: default: }
+							}
 						}
 					}
-
-					if handled {
-						jsonBytes, _ := json.Marshal(msg)
-						c.WriteMessage(websocket.TextMessage, jsonBytes)
-						continue
-					}
-
-					// Handle Control and Regular Characters
-					switch {
-					case char == '\r' || char == '\n': // Enter
-						msg = ClientMessage{
-							Type: "key",
-							Data: map[string]interface{}{"keyType": "enter"},
-						}
-					case char == '\x7f' || char == '\b': // Backspace
-						msg = ClientMessage{
-							Type: "key",
-							Data: map[string]interface{}{"keyType": "backspace"},
-						}
-					case char == '\t': // Tab
-						msg = ClientMessage{
-							Type: "key",
-							Data: map[string]interface{}{"keyType": "tab"},
-						}
-					case char == '\x03': // Ctrl+C
-						log.Println("Detected Ctrl+C, exiting...")
-						msg = ClientMessage{
-							Type: "key",
-							Data: map[string]interface{}{
-								"keyType": "ctrl+c",
-								"modifiers": map[string]bool{"ctrl": true},
-							},
-						}
-						jsonBytes, _ := json.Marshal(msg)
-						c.WriteMessage(websocket.TextMessage, jsonBytes)
-						return
-					case char == '\x12': // Ctrl+R
-						log.Println("Detected Ctrl+R")
-						msg = ClientMessage{
-							Type: "key",
-							Data: map[string]interface{}{
-								"keyType": "ctrl+r",
-								"modifiers": map[string]bool{"ctrl": true},
-							},
-						}
-					case char == '\x13': // Ctrl+S
-						log.Println("Detected Ctrl+S")
-						msg = ClientMessage{
-							Type: "key",
-							Data: map[string]interface{}{
-								"keyType": "ctrl+s",
-								"modifiers": map[string]bool{"ctrl": true},
-							},
-						}
-					case char == ' ': // Space
-						msg = ClientMessage{
-							Type: "key",
-							Data: map[string]interface{}{"keyType": "space"},
-						}
-					default:
-						// Treat as regular rune
-						// Note: This assumes single-byte runes (ASCII). UTF-8 multi-byte not fully handled here for simplicity.
-						log.Printf("Detected Rune: %q", char)
-						msg = ClientMessage{
-							Type: "key",
-							Data: map[string]interface{}{
-								"keyType": "runes",
-								"runes":   []string{string(char)},
-							},
-						}
-					}
-
-					jsonBytes, err := json.Marshal(msg)
-					if err != nil {
-						log.Printf("Error marshaling key message: %v", err)
-					} else {
-						c.WriteMessage(websocket.TextMessage, jsonBytes)
-					}
-					i++
 				}
+				
+			case <-escapeTimer.C:
+				// Timeout waiting for sequence completion
+				log.Println("Escape sequence timeout, flushing buffer")
+				flushBuffer()
 			}
 		}
 	}()
