@@ -12,42 +12,48 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Terminus Client using xterm.js
-document.addEventListener('DOMContentLoaded', () => {
+import { init, Terminal, FitAddon } from './ghostty-web.js';
+
+document.addEventListener('DOMContentLoaded', async () => {
     const terminalElement = document.getElementById('terminal');
     if (!terminalElement) {
         console.error('Terminal element not found!');
         return;
     }
 
-    // --- 1. Initialize xterm.js Terminal ---
-    // We use xterm.js as it's a robust, production-ready web terminal component
-    // that handles ANSI escape sequences perfectly.
+    // --- 1. Initialize Ghostty-Web Terminal ---
+    try {
+        await init(); // Initialize WASM
+        console.log('Ghostty-Web WASM initialized.');
+    } catch (e) {
+        console.error('Failed to initialize Ghostty-Web WASM:', e);
+        terminalElement.innerText = 'Terminal failed to load. Check console.';
+        return;
+    }
+
     let terminal;
     let fitAddon;
 
     try {
         terminal = new Terminal({
             cursorBlink: true,
-            fontFamily: 'Menlo, Monaco, "Courier New", monospace',
             fontSize: 14,
+            fontFamily: 'Menlo, Monaco, "Courier New", monospace',
             theme: {
                 background: '#000000',
                 foreground: '#ffffff',
             }
         });
 
-        // Load FitAddon to automatically size the terminal to the container
-        fitAddon = new FitAddon.FitAddon();
+        fitAddon = new FitAddon();
         terminal.loadAddon(fitAddon);
 
         terminal.open(terminalElement);
         fitAddon.fit();
         
-        console.log('xterm.js terminal initialized.');
+        console.log('Ghostty-Web terminal opened.');
     } catch (e) {
-        console.error('Failed to initialize Terminal:', e);
-        terminalElement.innerText = 'Terminal failed to load. Please check console for errors.';
+        console.error('Failed to open Ghostty Terminal:', e);
         return;
     }
 
@@ -58,16 +64,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     ws.onopen = () => {
         console.log('WebSocket connection opened.');
-        // Initial fit and resize message
         fitAddon.fit();
         sendResizeMessage();
-        terminal.focus();
+        // Force focus so keyboard works immediately
+        // Note: Ghostty-Web might handle focus differently, but we try standard method
+        terminalElement.focus();
     };
 
     // --- 3. Data Flow (Server to Terminal) ---
     ws.onmessage = (event) => {
-        // The server sends raw ANSI strings directly.
-        // xterm.js handles ANSI parsing and rendering automatically.
         if (event.data) {
             terminal.write(event.data);
         }
@@ -75,29 +80,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
     ws.onclose = () => {
         console.log('WebSocket connection closed.');
-        terminal.writeln('\r\n\x1b[31mConnection to server lost. Please refresh the page.\x1b[0m');
+        terminal.write('\r\n\x1b[31mConnection to server lost. Please refresh the page.\x1b[0m\r\n');
     };
 
     ws.onerror = (err) => {
         console.error('WebSocket error:', err);
-        terminal.writeln(`\r\n\x1b[31mWebSocket error: ${err.message || 'Unknown error'}\x1b[0m`);
+        terminal.write(`\r\n\x1b[31mWebSocket error: ${err.message || 'Unknown error'}\x1b[0m\r\n`);
     };
 
     // --- 4. Data Flow (Terminal to Server) ---
     terminal.onData((data) => {
         if (ws.readyState !== WebSocket.OPEN) return;
 
-        // `data` contains the raw input sequence from xterm.js
+        // Ghostty-Web sends raw input data (ANSI sequences, text, etc.)
+        // We map this to the Terminus protocol.
+        
         let msgType = 'key';
         let keyData = { keyType: 'runes', runes: [] };
 
-        // Basic mapping for special keys if needed, but 'runes' usually covers most
-        // xterm.js sends the correct escape sequences for arrow keys etc.
-        // Terminus backend expects a slightly more structured object for some keys,
-        // but raw rune processing is often sufficient for basic apps.
-        // Let's keep the structured mapping for robustness with the current Go backend.
-
-        // We check for common control codes
+        // Basic control code mapping
         switch (data) {
             case '\r': // Enter
                 keyData.keyType = 'enter';
@@ -117,21 +118,25 @@ document.addEventListener('DOMContentLoaded', () => {
             case ' ':
                 keyData.keyType = 'space';
                 break;
-            // Arrow keys come as sequences (e.g. \x1b[A) which are > 1 char
+            // Ghostty/xterm sequences for arrows
             case '\x1b[A': 
+            case '\x1bOA':
                 keyData.keyType = 'up';
                 break;
             case '\x1b[B': 
+            case '\x1bOB':
                 keyData.keyType = 'down';
                 break;
             case '\x1b[C': 
+            case '\x1bOC':
                 keyData.keyType = 'right';
                 break;
             case '\x1b[D': 
+            case '\x1bOD':
                 keyData.keyType = 'left';
                 break;
             default:
-                // For regular characters or unmapped sequences, send as runes
+                // For everything else, send as runes
                 keyData.runes = data.split('');
                 break;
         }
@@ -159,7 +164,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Listen for window resize events
     window.addEventListener('resize', () => {
-        // Fit the terminal to the container
         if (fitAddon) {
             fitAddon.fit();
             sendResizeMessage();
