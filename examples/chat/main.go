@@ -502,7 +502,6 @@ func main() {
 		func() terminus.Component {
 			return NewChatComponent()
 		},
-		terminus.WithStaticFiles(staticFiles, "static"),
 		terminus.WithAddress(":8890"),
 	)
 

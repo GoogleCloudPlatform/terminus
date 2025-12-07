@@ -518,7 +518,6 @@ func main() {
 		func() terminus.Component {
 			return NewGeminiChatComponent()
 		},
-		terminus.WithStaticFiles(staticFiles, "static"),
 		terminus.WithAddress(":8890"),
 	)
 

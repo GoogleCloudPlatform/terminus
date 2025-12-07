@@ -497,7 +497,6 @@ func main() {
 	// Create program with static files
 	program := terminus.NewProgram(
 		factory,
-		terminus.WithStaticFiles(staticFiles, "static"),
 		terminus.WithAddress(":8890"), // Use different port
 	)
 

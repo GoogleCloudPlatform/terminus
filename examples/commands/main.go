@@ -321,7 +321,6 @@ func main() {
 	// Create program
 	program := terminus.NewProgram(
 		factory,
-		terminus.WithStaticFiles(staticFiles, "static"),
 		terminus.WithAddress(":8890"),
 	)
 

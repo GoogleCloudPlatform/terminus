@@ -413,7 +413,6 @@ func main() {
 		func() terminus.Component {
 			return NewTodoComponent()
 		},
-		terminus.WithStaticFiles(staticFiles, "static"),
 		terminus.WithAddress(":8890"),
 	)
 
