@@ -14,8 +14,9 @@ All core refactoring tasks, example validations, and developer tooling updates a
     - **Documentation:** `README.md` reflects the new architecture and usage instructions.
 - **Bug Fixes & Refinements:**
     - Fixed critical input handling issues (modifier keys support for shortcuts like `Shift+Tab`, `Ctrl+S`, `Ctrl+R`).
-    - Resolved cursor rendering issues: now uses a non-blinking solid block cursor (White Background) that is always visible when focused.
-    - Added debug info ("Last Key: ...") to `textinput` example to help troubleshoot input issues.
+    - **CLI Input:** Rewrote CLI input parser to reliably handle escape sequences (fixing `[Z` artifacts) and control keys.
+    - **Cursor:** Resolved cursor rendering issues: now uses a non-blinking solid block cursor (White Background) that is always visible when focused.
+    - **Debug:** Added debug info ("Last Key: ...") to `textinput` example to help troubleshoot input issues.
     - Fixed a syntax error in session management logic.
     - Corrected asset embedding to ensure the web client loads reliably without 404s.
     - **Build Fix:** Removed invalid `//go:embed` directives from examples.

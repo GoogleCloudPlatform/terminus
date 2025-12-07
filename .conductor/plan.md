@@ -88,3 +88,9 @@
 - [x] **Fix Cursor Style:** Change cursor to a non-blinking solid block (reversed space).
 - [x] **Fix Web Input Interception:** Add `preventDefault` for `Ctrl+S` and `Ctrl+R` in `terminus-client.js` to prevent browser default actions.
 - [x] **Verify CLI Input:** Investigate why `Ctrl+S` might be failing in CLI (potentially flow control).
+
+## Phase 9: Advanced CLI Input Handling
+**Goal:** Fix Shift+Tab rendering as text (`[Z`) and investigate persistent `Ctrl+S` failure.
+
+- [x] **Rewrite CLI Parser:** Implement a robust lookahead parser in `terminus-cli` to correctly handle escape sequences (like `\x1b[Z`) even when mixed with other data.
+- [ ] **Debug Ctrl+S:** Add raw buffer logging to verify if `Ctrl+S` (byte 19) is received by the application.
