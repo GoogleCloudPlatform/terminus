@@ -1,58 +1,21 @@
 package terminus
 
 import (
-	"context"
-	"net/http"
-	"net/http/httptest"
-	"strings"
 	"testing"
-	"time"
-
-	"github.com/gorilla/websocket"
 )
 
 func TestClientToTerminusMessage(t *testing.T) {
-	// Setup a dummy Program to handle WebSocket connections
-	factory := func() Component { return &mockProgramComponent{} }
-	program := NewProgram(factory)
-
-	// Create test server
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		program.handleWebSocket(w, r)
-	}))
-	defer server.Close()
-
-	wsURL := "ws" + strings.TrimPrefix(server.URL, "http")
-
-	// Establish a WebSocket connection
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	conn, _, err := websocket.DefaultDialer.DialContext(ctx, wsURL, nil)
-	if err != nil {
-		t.Fatalf("Failed to connect to WebSocket: %v", err)
-	}
-	defer conn.Close()
-
-	// Get the session created by the program
-	// This is a bit of a hack for testing, normally you wouldn't reach into the manager directly
-	var testSession *Session
-	// Wait for the session to be created
-	for i := 0; i < 10; i++ {
-		if program.sessionManager.Count() > 0 {
-			for _, sess := range program.sessionManager.sessions { // Assuming sessions map is accessible
-				testSession = sess
-				break
-			}
-		}
-		if testSession != nil {
-			break
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
-	if testSession == nil {
-		t.Fatalf("Failed to retrieve test session")
-	}
+	// Create a detached session for testing message conversion
+	// We don't need a full running program or websocket connection for this unit test
+	// This avoids the data race between the test calling clientToTerminusMessage (which calls Resize)
+	// and the running Engine loop accessing the screen dimensions.
+	
+	// Create a dummy engine
+	comp := &mockProgramComponent{}
+	engine := NewEngine(comp)
+	
+	// Create a session manually
+	testSession := NewSession(engine, nil)
 
 	tests := []struct {
 		name     string

@@ -16,6 +16,7 @@ package terminus
 
 import (
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -237,9 +238,11 @@ func TestEngineLifecycle(t *testing.T) {
 				comp := &testComponent{}
 				engine := NewEngine(comp)
 				
-				quitCalled := false
+				var quitCalled atomic.Bool
+				done := make(chan struct{})
 				engine.SetQuitCallback(func() {
-					quitCalled = true
+					quitCalled.Store(true)
+					close(done)
 				})
 				
 				engine.Start()
@@ -248,9 +251,14 @@ func TestEngineLifecycle(t *testing.T) {
 				engine.SendMessage(Quit())
 				
 				// Wait for processing
-				time.Sleep(20 * time.Millisecond)
+				select {
+				case <-done:
+					// Success
+				case <-time.After(100 * time.Millisecond):
+					t.Error("Timeout waiting for quit callback")
+				}
 				
-				if !quitCalled {
+				if !quitCalled.Load() {
 					t.Error("Quit callback should have been called")
 				}
 				

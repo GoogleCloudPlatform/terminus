@@ -23,38 +23,37 @@ import (
 
 func TestWithCancel(t *testing.T) {
 	registry := NewCancellationRegistry()
-	
-	executed := false
-	cancelled := false
-	
+
+	var executed, cancelled atomic.Bool
+
 	cmd := registry.WithCancel("test", func(ctx context.Context) Msg {
 		select {
 		case <-time.After(100 * time.Millisecond):
-			executed = true
+			executed.Store(true)
 			return nil
 		case <-ctx.Done():
-			cancelled = true
+			cancelled.Store(true)
 			return nil
 		}
 	})
-	
+
 	// Start the command in a goroutine
 	go cmd()
-	
+
 	// Give it a moment to start
 	time.Sleep(10 * time.Millisecond)
-	
+
 	// Cancel it
 	registry.Cancel("test")
-	
+
 	// Wait for completion
 	time.Sleep(50 * time.Millisecond)
-	
-	if executed {
+
+	if executed.Load() {
 		t.Error("Command should have been cancelled before execution")
 	}
-	
-	if !cancelled {
+
+	if !cancelled.Load() {
 		t.Error("Command should have detected cancellation")
 	}
 }
@@ -231,25 +230,25 @@ func TestThrottle(t *testing.T) {
 
 func TestGlobalRegistry(t *testing.T) {
 	// Test global functions use the global registry
-	executed := false
-	
+	var executed atomic.Bool
+
 	cmd := WithCancel("global-test", func(ctx context.Context) Msg {
 		select {
 		case <-time.After(100 * time.Millisecond):
-			executed = true
+			executed.Store(true)
 		case <-ctx.Done():
 			return nil
 		}
 		return nil
 	})
-	
+
 	go cmd()
 	time.Sleep(10 * time.Millisecond)
-	
+
 	Cancel("global-test")
 	time.Sleep(50 * time.Millisecond)
-	
-	if executed {
+
+	if executed.Load() {
 		t.Error("Global command should have been cancelled")
 	}
 }
