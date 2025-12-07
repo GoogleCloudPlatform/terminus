@@ -14,7 +14,8 @@ All core refactoring tasks, example validations, and developer tooling updates a
     - **Documentation:** `README.md` reflects the new architecture and usage instructions.
 - **Bug Fixes & Refinements:**
     - Fixed critical input handling issues (modifier keys support for shortcuts like `Shift+Tab`, `Ctrl+S`, `Ctrl+R`).
-    - Resolved cursor rendering issues: now uses a non-blinking solid block cursor that is always visible when focused.
+    - Resolved cursor rendering issues: now uses a non-blinking solid block cursor (White Background) that is always visible when focused.
+    - Added debug info ("Last Key: ...") to `textinput` example to help troubleshoot input issues.
     - Fixed a syntax error in session management logic.
     - Corrected asset embedding to ensure the web client loads reliably without 404s.
     - **Build Fix:** Removed invalid `//go:embed` directives from examples.
@@ -23,5 +24,5 @@ All core refactoring tasks, example validations, and developer tooling updates a
 ## Current State:
 The project is stable and ready for use.
 - **Web:** Run `go run examples/<name>/main.go` and visit `http://localhost:8890`.
-- **CLI:** Run `make run-cli` (after starting a server) to connect via the terminal.
+- **CLI:** **Rebuild with `make build-cli`**, then run `make run-cli` (after starting a server).
 - **Tests:** All tests pass (`make test`).
