@@ -186,4 +186,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             sendResizeMessage();
         }
     });
+
+    // Prevent default browser actions for Ctrl+S (Save) and Ctrl+R (Refresh)
+    // to allow them to be sent to the terminal.
+    document.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey && e.key === 's') || (e.ctrlKey && e.key === 'r')) {
+            e.preventDefault();
+        }
+    });
 });

@@ -93,4 +93,10 @@
 **Goal:** Fix Shift+Tab rendering as text (`[Z`) and investigate persistent `Ctrl+S` failure.
 
 - [x] **Rewrite CLI Parser:** Implement a robust lookahead parser in `terminus-cli` to correctly handle escape sequences (like `\x1b[Z`) even when mixed with other data.
-- [ ] **Debug Ctrl+S:** Add raw buffer logging to verify if `Ctrl+S` (byte 19) is received by the application.
+- [x] **Debug Ctrl+S:** Add raw buffer logging to verify if `Ctrl+S` (byte 19) is received by the application.
+
+## Phase 10: State Machine Parser
+**Goal:** Implement a robust state-machine based parser for the CLI to handle ANSI escape sequences split across `Read` boundaries.
+
+- [x] **Implement State Machine:** Refactor `terminus-cli` to use a state machine (Normal -> Escape -> CSI) to buffer and parse sequences like `\x1b[Z` reliably.
+- [x] **Verify Fixes:** Confirm `Shift+Tab` and `Ctrl+S` behavior with the new parser.
