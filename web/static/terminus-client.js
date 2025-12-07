@@ -73,6 +73,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- 3. Data Flow (Server to Terminal) ---
     ws.onmessage = (event) => {
+        // The server sends raw ANSI strings directly.
+        // Ghostty-Web's write method handles ANSI parsing and rendering automatically.
         if (event.data) {
             terminal.write(event.data);
         }
