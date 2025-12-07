@@ -44,3 +44,6 @@
 - [x] **Concurrency Review:** Audit `session.go` for race conditions during rapid updates.
 - [x] **Window Resizing:** Ensure `SIGWINCH` (local) or Browser Resize events correctly propagate to the server's virtual screen and trigger a re-render.
 - [x] **Documentation:** Update `README.md` with instructions for running the Web Server and connecting with the CLI.
+- [x] **Update Makefile:** Add help command and CLI build/run targets.
+
+## Phase 5: Example Updates & Fixes

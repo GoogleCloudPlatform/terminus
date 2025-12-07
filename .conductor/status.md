@@ -1,13 +1,24 @@
 # Project Status
 
-All planned tasks for refactoring the Terminus Go framework to use standard ANSI escape codes for rendering, supporting both a Ghostty-Web browser frontend and a native CLI client, have been successfully completed.
+All core refactoring tasks, example validations, and developer tooling updates are complete. The Terminus framework is stable and supports both Web and CLI clients with a unified ANSI architecture.
 
-## Key Achievements:
+## Recent Achievements:
 
-- Implemented ANSI-based diffing for efficient terminal updates.
-- Updated session management to stream raw ANSI over WebSockets.
-- Developed a web frontend with a Ghostty-Web terminal (simulated).
-- Created a native CLI client with raw terminal input/output and resize handling.
-- Ensured thread-safe concurrency in session management.
-- All existing tests are passing.
-- Project documentation (README.md) has been updated to reflect the new architecture and usage instructions.
+- **Unified Architecture:** Successfully transitioned to a single Go backend streaming raw ANSI escape codes.
+- **Client Flexibility:**
+    - **Web:** A robust `terminus-client.js` with a custom ANSI parser handles rendering and input, including modifier keys.
+    - **CLI:** A native `terminus-cli` tool connects via WebSocket and provides a raw terminal experience.
+- **Example Modernization:** All 8 examples (`hello`, `todo`, `chat`, `dashboard`, `widgets`, `textinput`, `commands`, `layout`) have been updated to use centralized assets and verified to work.
+- **Developer Experience:**
+    - **Makefile:** Updated with a `help` command and dedicated `build-cli`/`run-cli` targets.
+    - **Documentation:** `README.md` reflects the new architecture and usage instructions.
+- **Bug Fixes:**
+    - Fixed critical input handling issues (modifier keys support for shortcuts like `Shift+Tab`).
+    - Resolved cursor rendering and blinking issues in the `TextInput` widget.
+    - Fixed a syntax error in session management logic.
+    - Corrected asset embedding to ensure the web client loads reliably without 404s.
+
+## Current State:
+The project is stable and ready for use.
+- **Web:** Run `go run examples/<name>/main.go` and visit `http://localhost:8890`.
+- **CLI:** Run `make run-cli` (after starting a server) to connect via the terminal.
