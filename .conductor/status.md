@@ -14,7 +14,7 @@ All core refactoring tasks, example validations, and developer tooling updates a
     - **Documentation:** `README.md` reflects the new architecture and usage instructions.
 - **Bug Fixes & Refinements:**
     - Fixed critical input handling issues (modifier keys support for shortcuts like `Shift+Tab`, `Ctrl+S`, `Ctrl+R`).
-    - **CLI Input:** Rewrote CLI input parser to reliably handle escape sequences (fixing `[Z` artifacts) and control keys.
+    - **CLI Input Engine:** Implemented a robust **State Machine Parser** in `terminus-cli` to handle ANSI escape sequences split across reads (fixing `[Z` artifacts) and reliably detect control keys.
     - **Cursor:** Resolved cursor rendering issues: now uses a non-blinking solid block cursor (White Background) that is always visible when focused.
     - **Debug:** Added debug info ("Last Key: ...") to `textinput` example to help troubleshoot input issues.
     - Fixed a syntax error in session management logic.
@@ -25,5 +25,5 @@ All core refactoring tasks, example validations, and developer tooling updates a
 ## Current State:
 The project is stable and ready for use.
 - **Web:** Run `go run examples/<name>/main.go` and visit `http://localhost:8890`.
-- **CLI:** **Rebuild with `make build-cli`**, then run `make run-cli` (after starting a server).
+- **CLI:** **CRITICAL:** Rebuild with `make build-cli` to get the parser fixes. Run `make run-cli` (after starting a server).
 - **Tests:** All tests pass (`make test`).
