@@ -10,12 +10,12 @@ func TestClientToTerminusMessage(t *testing.T) {
 	// This avoids the data race between the test calling clientToTerminusMessage (which calls Resize)
 	// and the running Engine loop accessing the screen dimensions.
 	
-	// Create a dummy engine
+	// Create a dummy component
 	comp := &mockProgramComponent{}
-	engine := NewEngine(comp)
 	
 	// Create a session manually
-	testSession := NewSession(engine, nil)
+	// We pass nil for the websocket connection since we're only testing internal logic
+	testSession := NewSession("test-id", nil, comp)
 
 	tests := []struct {
 		name     string
