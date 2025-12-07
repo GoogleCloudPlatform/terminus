@@ -140,7 +140,7 @@ func TestColorForeground(t *testing.T) {
 	
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := tt.color.Foreground()
+			result := tt.color.AnsiCode(false)
 			if result != tt.expected {
 				t.Errorf("Expected %s, got %s", tt.expected, result)
 			}
@@ -163,7 +163,7 @@ func TestColorBackground(t *testing.T) {
 	
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := tt.color.Background()
+			result := tt.color.AnsiCode(true)
 			if result != tt.expected {
 				t.Errorf("Expected %s, got %s", tt.expected, result)
 			}

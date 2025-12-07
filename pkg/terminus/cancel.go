@@ -147,15 +147,31 @@ type TimeoutMsg struct {
 }
 
 // Debounce creates a command that will only execute after a period of inactivity
+var debounceRegistry = struct {
+	sync.Mutex
+	timers map[string]*time.Timer
+}{
+	timers: make(map[string]*time.Timer),
+}
+
 func Debounce(id string, delay time.Duration, cmd Cmd) Cmd {
-	return WithCancel(id, func(ctx context.Context) Msg {
-		select {
-		case <-time.After(delay):
-			return cmd()
-		case <-ctx.Done():
-			return nil
+	return func() Msg {
+		debounceRegistry.Lock()
+		defer debounceRegistry.Unlock()
+
+		if timer, exists := debounceRegistry.timers[id]; exists {
+			timer.Stop() // Stop existing timer
 		}
-	})
+
+		// Start a new timer that executes the command after the delay
+		newTimer := time.AfterFunc(delay, func() {
+			// Execute the command in a new goroutine to avoid blocking the timer goroutine
+			go cmd()
+		})
+
+		debounceRegistry.timers[id] = newTimer
+		return nil
+	}
 }
 
 // Throttle creates a command that will execute at most once per duration

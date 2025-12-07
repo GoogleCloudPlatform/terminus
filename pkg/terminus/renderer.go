@@ -15,6 +15,7 @@
 package terminus
 
 import (
+	"strconv"
 	"strings"
 	"unicode/utf8"
 )
@@ -338,7 +339,43 @@ func (p *ANSIParser) parseSGR(codes string) {
 		case "107":
 			p.current = p.current.Background(BrightWhite)
 			
-		// 256 color and RGB not implemented yet for simplicity
+		// 256 color and RGB
+		case "38": // Extended foreground
+			if i+2 < len(parts) && parts[i+1] == "5" {
+				// 256 color: ESC[38;5;<n>m
+				n, err := strconv.Atoi(parts[i+2])
+				if err == nil { // Check for successful conversion
+					p.current = p.current.Foreground(ANSI256(n))
+				}
+				i += 2
+			} else if i+4 < len(parts) && parts[i+1] == "2" {
+				// RGB color: ESC[38;2;<r>;<g>;<b>m
+				r, errR := strconv.Atoi(parts[i+2])
+				g, errG := strconv.Atoi(parts[i+3])
+				b, errB := strconv.Atoi(parts[i+4])
+				if errR == nil && errG == nil && errB == nil { // Check for successful conversion
+					p.current = p.current.Foreground(RGB(r, g, b))
+				}
+				i += 4
+			}
+		case "48": // Extended background
+			if i+2 < len(parts) && parts[i+1] == "5" {
+				// 256 color: ESC[48;5;<n>m
+				n, err := strconv.Atoi(parts[i+2])
+				if err == nil {
+					p.current = p.current.Background(ANSI256(n))
+				}
+				i += 2
+			} else if i+4 < len(parts) && parts[i+1] == "2" {
+				// RGB color: ESC[48;2;<r>;<g>;<b>m
+				r, errR := strconv.Atoi(parts[i+2])
+				g, errG := strconv.Atoi(parts[i+3])
+				b, errB := strconv.Atoi(parts[i+4])
+				if errR == nil && errG == nil && errB == nil {
+					p.current = p.current.Background(RGB(r, g, b))
+				}
+				i += 4
+			}
 		}
 	}
 }

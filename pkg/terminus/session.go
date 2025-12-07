@@ -178,8 +178,7 @@ func (s *Session) writePump(ctx context.Context) {
 			}
 			
 			if err := s.conn.WriteMessage(websocket.TextMessage, message); err != nil {
-				return
-			}
+				return			}
 			
 		case <-ticker.C:
 			s.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
@@ -231,54 +230,13 @@ func (s *Session) handleRender(view string) {
 	// Ensure screen differ has correct dimensions
 	s.screenDiffer.Resize(width, height)
 	
-	// Compute diff operations
-	ops := s.screenDiffer.Update(view)
+	// Compute diff operations (ANSI string)
+	ansiOutput := s.screenDiffer.Update(view)
 	
-	// Convert diff ops to render commands
-	for _, op := range ops {
-		var msg ServerMessage
-		
-		switch op.Type {
-		case DiffOpClear:
-			msg = ServerMessage{
-				Type: "clear",
-				Data: map[string]interface{}{},
-			}
-			
-		case DiffOpUpdateLine:
-			lineOp := op.Data.(UpdateLineOp)
-			msg = ServerMessage{
-				Type: "updateLine",
-				Data: map[string]interface{}{
-					"y":       lineOp.Y,
-					"content": lineOp.Content,
-				},
-			}
-			
-		case DiffOpSetCell:
-			cellOp := op.Data.(SetCellOp)
-			msg = ServerMessage{
-				Type: "setCell",
-				Data: map[string]interface{}{
-					"x":     cellOp.X,
-					"y":     cellOp.Y,
-					"rune":  cellOp.Rune,
-					"style": cellOp.Style,
-				},
-			}
-			
-		default:
-			continue
-		}
-		
-		data, err := json.Marshal(msg)
-		if err != nil {
-			fmt.Printf("Failed to marshal render message for session %s: %v\n", s.id, err)
-			continue
-		}
-		
+	// Send raw ANSI string to client
+	if ansiOutput != "" {
 		select {
-		case s.outgoing <- data:
+		case s.outgoing <- []byte(ansiOutput):
 		default:
 			fmt.Printf("Outgoing message buffer full for session %s\n", s.id)
 		}
@@ -335,25 +293,29 @@ func (s *Session) clientToTerminusMessage(msg ClientMessage) Msg {
 		}
 		
 	case "resize":
-		if resizeData, ok := msg.Data.(map[string]interface{}); ok {
-			width, _ := resizeData["width"].(float64)
-			height, _ := resizeData["height"].(float64)
-			
-			// Update session dimensions
-			s.mu.Lock()
-			s.width = int(width)
-			s.height = int(height)
-			s.mu.Unlock()
-			
-			// Update screen differ
-			s.screenDiffer.Resize(int(width), int(height))
-			
-			return WindowSizeMsg{
-				Width:  int(width),
-				Height: int(height),
-			}
-		}
-	}
+					if resizeData, ok := msg.Data.(map[string]interface{}); ok {
+						width, widthOk := resizeData["width"].(float64)
+						height, heightOk := resizeData["height"].(float64)
+						
+						if !widthOk || !heightOk || width <= 0 || height <= 0 {
+							fmt.Printf("Invalid resize dimensions received from session %s: width=%.0f, height=%.0f\n", s.id, width, height)
+							return nil
+						}
+						
+						// Update session dimensions
+						s.mu.Lock()
+						s.width = int(width)
+						s.height = int(height)
+						s.mu.Unlock()
+						
+						// Update screen differ
+						s.screenDiffer.Resize(int(width), int(height))
+						
+						return WindowSizeMsg{
+							Width:  int(width),
+							Height: int(height),
+						}
+					}	}
 	
 	return nil
 }
@@ -362,10 +324,4 @@ func (s *Session) clientToTerminusMessage(msg ClientMessage) Msg {
 type ClientMessage struct {
 	Type string      `json:"type"`
 	Data interface{} `json:"data"`
-}
-
-// ServerMessage represents a message to the client
-type ServerMessage struct {
-	Type string                 `json:"type"`
-	Data map[string]interface{} `json:"data"`
 }

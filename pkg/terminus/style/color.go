@@ -156,39 +156,38 @@ func RGB(r, g, b int) Color {
 	}
 }
 
-// Foreground returns the ANSI escape code for foreground color
-func (c Color) Foreground() string {
+func (c Color) AnsiCode(isBackground bool) string {
 	switch c.colorType {
 	case namedColor:
-		return c.value
-	case ansi256Color:
-		return fmt.Sprintf("38;5;%s", c.value)
-	case rgbColor:
-		return fmt.Sprintf("38;2;%s", c.value)
-	default:
-		return "37" // Default white
-	}
-}
-
-// Background returns the ANSI escape code for background color
-func (c Color) Background() string {
-	switch c.colorType {
-	case namedColor:
-		// Convert foreground to background codes
 		var n int
 		fmt.Sscanf(c.value, "%d", &n)
-		if n >= 30 && n <= 37 {
-			return fmt.Sprintf("%d", n+10)
-		} else if n >= 90 && n <= 97 {
-			return fmt.Sprintf("%d", n+10)
+		if isBackground {
+			if n >= 30 && n <= 37 {
+				return fmt.Sprintf("%d", n+10)
+			} else if n >= 90 && n <= 97 {
+				return fmt.Sprintf("%d", n+10)
+			}
+			return "47" // Default white background
+		} else {
+			return c.value
 		}
-		return "47" // Default white background
 	case ansi256Color:
-		return fmt.Sprintf("48;5;%s", c.value)
+		if isBackground {
+			return fmt.Sprintf("48;5;%s", c.value)
+		} else {
+			return fmt.Sprintf("38;5;%s", c.value)
+		}
 	case rgbColor:
-		return fmt.Sprintf("48;2;%s", c.value)
+		if isBackground {
+			return fmt.Sprintf("48;2;%s", c.value)
+		} else {
+			return fmt.Sprintf("38;2;%s", c.value)
+		}
 	default:
-		return "47" // Default white background
+		if isBackground {
+			return "47" // Default white background
+		}
+		return "37" // Default white
 	}
 }
 
@@ -221,4 +220,9 @@ func clamp(v, min, max int) int {
 		return max
 	}
 	return v
+}
+
+// IsZero returns true if the color is its zero value (not explicitly set)
+func (c Color) IsZero() bool {
+	return c.value == "" && c.colorType == 0
 }

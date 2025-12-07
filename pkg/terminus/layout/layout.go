@@ -236,15 +236,27 @@ func AddPadding(content string, top, right, bottom, left int) string {
 // padOrTruncate ensures a string is exactly the specified width
 func padOrTruncate(s string, width int, align Alignment) string {
 	visLen := visibleLength(s)
-	
-	if visLen >= width {
-		// TODO: Implement proper ANSI-aware truncation
-		// For now, if the visible length is already at or over width, return as-is
-		// to avoid breaking ANSI sequences
-		return s
+
+	if visLen > width {
+		// Truncate the string to the visible width
+		var sb strings.Builder
+		currentVisLen := 0
+		for _, r := range s {
+			if currentVisLen >= width {
+				break
+			}
+			sb.WriteRune(r)
+			currentVisLen++ // Assuming each rune is 1 visible char for now
+		}
+		s = sb.String()
+		visLen = visibleLength(s) // Recalculate visible length after truncation
 	}
 
 	padding := width - visLen
+	if padding < 0 { // Should not happen if visLen > width handled above
+		padding = 0
+	}
+	
 	switch align {
 	case AlignLeft:
 		return s + strings.Repeat(" ", padding)

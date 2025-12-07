@@ -1,27 +1,59 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package terminus
 
 import (
-	"encoding/json"
+	"context"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
+	"time"
+
+	"github.com/gorilla/websocket"
 )
 
 func TestClientToTerminusMessage(t *testing.T) {
-	session := &Session{}
-	
+	// Setup a dummy Program to handle WebSocket connections
+	factory := func() Component { return &mockProgramComponent{} }
+	program := NewProgram(factory)
+
+	// Create test server
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		program.handleWebSocket(w, r)
+	}))
+	defer server.Close()
+
+	wsURL := "ws" + strings.TrimPrefix(server.URL, "http")
+
+	// Establish a WebSocket connection
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	conn, _, err := websocket.DefaultDialer.DialContext(ctx, wsURL, nil)
+	if err != nil {
+		t.Fatalf("Failed to connect to WebSocket: %v", err)
+	}
+	defer conn.Close()
+
+	// Get the session created by the program
+	// This is a bit of a hack for testing, normally you wouldn't reach into the manager directly
+	var testSession *Session
+	// Wait for the session to be created
+	for i := 0; i < 10; i++ {
+		if program.sessionManager.Count() > 0 {
+			for _, sess := range program.sessionManager.sessions { // Assuming sessions map is accessible
+				testSession = sess
+				break
+			}
+		}
+		if testSession != nil {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if testSession == nil {
+		t.Fatalf("Failed to retrieve test session")
+	}
+
 	tests := []struct {
 		name     string
 		input    ClientMessage
@@ -43,7 +75,7 @@ func TestClientToTerminusMessage(t *testing.T) {
 			input: ClientMessage{
 				Type: "key",
 				Data: map[string]interface{}{
-					"keyType": "runes",
+					"keyType": "runes",	
 					"runes":   []interface{}{"h", "e", "l", "l", "o"},
 				},
 			},
@@ -53,9 +85,7 @@ func TestClientToTerminusMessage(t *testing.T) {
 			name: "Enter key",
 			input: ClientMessage{
 				Type: "key",
-				Data: map[string]interface{}{
-					"keyType": "enter",
-				},
+				Data: map[string]interface{}{"keyType": "enter"},
 			},
 			expected: KeyMsg{Type: KeyEnter},
 		},
@@ -63,9 +93,7 @@ func TestClientToTerminusMessage(t *testing.T) {
 			name: "Space key",
 			input: ClientMessage{
 				Type: "key",
-				Data: map[string]interface{}{
-					"keyType": "space",
-				},
+				Data: map[string]interface{}{"keyType": "space"},
 			},
 			expected: KeyMsg{Type: KeySpace},
 		},
@@ -73,9 +101,7 @@ func TestClientToTerminusMessage(t *testing.T) {
 			name: "Backspace key",
 			input: ClientMessage{
 				Type: "key",
-				Data: map[string]interface{}{
-					"keyType": "backspace",
-				},
+				Data: map[string]interface{}{"keyType": "backspace"},
 			},
 			expected: KeyMsg{Type: KeyBackspace},
 		},
@@ -83,9 +109,7 @@ func TestClientToTerminusMessage(t *testing.T) {
 			name: "Tab key",
 			input: ClientMessage{
 				Type: "key",
-				Data: map[string]interface{}{
-					"keyType": "tab",
-				},
+				Data: map[string]interface{}{"keyType": "tab"},
 			},
 			expected: KeyMsg{Type: KeyTab},
 		},
@@ -93,9 +117,7 @@ func TestClientToTerminusMessage(t *testing.T) {
 			name: "Escape key",
 			input: ClientMessage{
 				Type: "key",
-				Data: map[string]interface{}{
-					"keyType": "escape",
-				},
+				Data: map[string]interface{}{"keyType": "escape"},
 			},
 			expected: KeyMsg{Type: KeyEsc},
 		},
@@ -103,9 +125,7 @@ func TestClientToTerminusMessage(t *testing.T) {
 			name: "Arrow up",
 			input: ClientMessage{
 				Type: "key",
-				Data: map[string]interface{}{
-					"keyType": "up",
-				},
+				Data: map[string]interface{}{"keyType": "up"},
 			},
 			expected: KeyMsg{Type: KeyUp},
 		},
@@ -113,9 +133,7 @@ func TestClientToTerminusMessage(t *testing.T) {
 			name: "Arrow down",
 			input: ClientMessage{
 				Type: "key",
-				Data: map[string]interface{}{
-					"keyType": "down",
-				},
+				Data: map[string]interface{}{"keyType": "down"},
 			},
 			expected: KeyMsg{Type: KeyDown},
 		},
@@ -123,9 +141,7 @@ func TestClientToTerminusMessage(t *testing.T) {
 			name: "Arrow left",
 			input: ClientMessage{
 				Type: "key",
-				Data: map[string]interface{}{
-					"keyType": "left",
-				},
+				Data: map[string]interface{}{"keyType": "left"},
 			},
 			expected: KeyMsg{Type: KeyLeft},
 		},
@@ -133,9 +149,7 @@ func TestClientToTerminusMessage(t *testing.T) {
 			name: "Arrow right",
 			input: ClientMessage{
 				Type: "key",
-				Data: map[string]interface{}{
-					"keyType": "right",
-				},
+				Data: map[string]interface{}{"keyType": "right"},
 			},
 			expected: KeyMsg{Type: KeyRight},
 		},
@@ -143,9 +157,7 @@ func TestClientToTerminusMessage(t *testing.T) {
 			name: "Ctrl+C",
 			input: ClientMessage{
 				Type: "key",
-				Data: map[string]interface{}{
-					"keyType": "ctrl+c",
-				},
+				Data: map[string]interface{}{"keyType": "ctrl+c"},
 			},
 			expected: KeyMsg{Type: KeyCtrlC},
 		},
@@ -169,29 +181,29 @@ func TestClientToTerminusMessage(t *testing.T) {
 			expected: nil,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := session.clientToTerminusMessage(tt.input)
-			
+			result := testSession.clientToTerminusMessage(tt.input) // Use testSession here
+
 			if tt.expected == nil {
 				if result != nil {
 					t.Errorf("Expected nil, got %+v", result)
 				}
 				return
 			}
-			
+
 			switch expected := tt.expected.(type) {
 			case KeyMsg:
 				keyMsg, ok := result.(KeyMsg)
 				if !ok {
 					t.Fatalf("Expected KeyMsg, got %T", result)
 				}
-				
+
 				if keyMsg.Type != expected.Type {
 					t.Errorf("Expected key type %v, got %v", expected.Type, keyMsg.Type)
 				}
-				
+
 				if len(keyMsg.Runes) != len(expected.Runes) {
 					t.Errorf("Expected %d runes, got %d", len(expected.Runes), len(keyMsg.Runes))
 				} else {
@@ -201,72 +213,20 @@ func TestClientToTerminusMessage(t *testing.T) {
 						}
 					}
 				}
-				
+
 			case WindowSizeMsg:
 				sizeMsg, ok := result.(WindowSizeMsg)
 				if !ok {
 					t.Fatalf("Expected WindowSizeMsg, got %T", result)
 				}
-				
+
 				if sizeMsg.Width != expected.Width {
 					t.Errorf("Expected width %d, got %d", expected.Width, sizeMsg.Width)
 				}
-				
+
 				if sizeMsg.Height != expected.Height {
 					t.Errorf("Expected height %d, got %d", expected.Height, sizeMsg.Height)
 				}
-			}
-		})
-	}
-}
-
-func TestServerMessage(t *testing.T) {
-	tests := []struct {
-		name     string
-		message  ServerMessage
-		expected string
-	}{
-		{
-			name: "Render message",
-			message: ServerMessage{
-				Type: "render",
-				Data: map[string]interface{}{
-					"content": "Hello, World!",
-				},
-			},
-			expected: `{"type":"render","data":{"content":"Hello, World!"}}`,
-		},
-		{
-			name: "Clear message",
-			message: ServerMessage{
-				Type: "clear",
-				Data: map[string]interface{}{},
-			},
-			expected: `{"type":"clear","data":{}}`,
-		},
-	}
-	
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			data, err := json.Marshal(tt.message)
-			if err != nil {
-				t.Fatalf("Failed to marshal message: %v", err)
-			}
-			
-			// Parse both to compare as JSON objects (handles key ordering)
-			var expected, actual map[string]interface{}
-			
-			if err := json.Unmarshal([]byte(tt.expected), &expected); err != nil {
-				t.Fatalf("Failed to unmarshal expected: %v", err)
-			}
-			
-			if err := json.Unmarshal(data, &actual); err != nil {
-				t.Fatalf("Failed to unmarshal actual: %v", err)
-			}
-			
-			// Compare types
-			if expected["type"] != actual["type"] {
-				t.Errorf("Expected type %v, got %v", expected["type"], actual["type"])
 			}
 		})
 	}

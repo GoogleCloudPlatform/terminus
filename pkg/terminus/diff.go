@@ -14,36 +14,10 @@
 
 package terminus
 
-// DiffOp represents a diff operation
-type DiffOp struct {
-	Type DiffOpType
-	Data interface{}
-}
-
-// DiffOpType represents the type of diff operation
-type DiffOpType string
-
-const (
-	DiffOpClear      DiffOpType = "clear"
-	DiffOpSetCell    DiffOpType = "setCell"
-	DiffOpUpdateLine DiffOpType = "updateLine"
-	DiffOpScrollUp   DiffOpType = "scrollUp"
-	DiffOpScrollDown DiffOpType = "scrollDown"
+import (
+	"fmt"
+	"strings"
 )
-
-// SetCellOp represents a single cell update
-type SetCellOp struct {
-	X     int    `json:"x"`
-	Y     int    `json:"y"`
-	Rune  string `json:"rune"`
-	Style string `json:"style,omitempty"`
-}
-
-// UpdateLineOp represents a full line update
-type UpdateLineOp struct {
-	Y       int    `json:"y"`
-	Content string `json:"content"`
-}
 
 // Differ computes differences between two screens
 type Differ struct {
@@ -56,65 +30,59 @@ func NewDiffer() *Differ {
 	return &Differ{}
 }
 
-// Diff computes the differences between two screens
-func (d *Differ) Diff(oldScreen, newScreen *Screen) []DiffOp {
+// Diff computes the differences between two screens and returns an ANSI string
+func (d *Differ) Diff(oldScreen, newScreen *Screen) string {
+	var sb strings.Builder
 	d.oldScreen = oldScreen
 	d.newScreen = newScreen
-	
+
 	// If dimensions changed, clear and redraw
-	if oldScreen == nil || 
-		oldScreen.width != newScreen.width || 
-		oldScreen.height != newScreen.height {
+	if oldScreen == nil || oldScreen.width != newScreen.width || oldScreen.height != newScreen.height {
 		return d.fullRedraw()
 	}
-	
+
 	// Compute line-by-line differences
-	return d.computeLineDiffs()
+	sb.WriteString(d.computeLineDiffs())
+
+	// Reset style at the end to ensure terminal is in a known state
+	sb.WriteString("\x1b[0m")
+
+	return sb.String()
 }
 
-// fullRedraw creates diff ops for a full screen redraw
-func (d *Differ) fullRedraw() []DiffOp {
-	ops := []DiffOp{
-		{Type: DiffOpClear},
-	}
-	
+// fullRedraw creates an ANSI string for a full screen redraw
+func (d *Differ) fullRedraw() string {
+	var sb strings.Builder
+	sb.WriteString("\x1b[2J") // Clear screen
+	sb.WriteString("\x1b[H")  // Move cursor to home
+
 	// Add all non-empty lines
 	for y := 0; y < d.newScreen.height; y++ {
 		lineContent := d.renderLine(d.newScreen, y)
 		if lineContent != "" {
-			ops = append(ops, DiffOp{
-				Type: DiffOpUpdateLine,
-				Data: UpdateLineOp{
-					Y:       y,
-					Content: lineContent,
-				},
-			})
+			sb.WriteString(fmt.Sprintf("\x1b[%d;1H", y+1)) // Move cursor to start of line
+			sb.WriteString(lineContent)
 		}
 	}
-	
-	return ops
+	sb.WriteString("\x1b[0m") // Ensure reset at the end of full redraw
+	return sb.String()
 }
 
-// computeLineDiffs computes line-by-line differences
-func (d *Differ) computeLineDiffs() []DiffOp {
-	ops := []DiffOp{}
-	
+// computeLineDiffs computes line-by-line differences and returns an ANSI string
+func (d *Differ) computeLineDiffs() string {
+	var sb strings.Builder
+
 	for y := 0; y < d.newScreen.height; y++ {
 		// Compare lines
 		if !d.linesEqual(y) {
 			// Line changed, send update
 			lineContent := d.renderLine(d.newScreen, y)
-			ops = append(ops, DiffOp{
-				Type: DiffOpUpdateLine,
-				Data: UpdateLineOp{
-					Y:       y,
-					Content: lineContent,
-				},
-			})
+			sb.WriteString(fmt.Sprintf("\x1b[%d;1H", y+1)) // Move cursor to start of line
+			sb.WriteString("\x1b[0K") // Clear to end of line
+			sb.WriteString(lineContent)
 		}
 	}
-	
-	return ops
+	return sb.String()
 }
 
 // linesEqual checks if two lines are equal
@@ -122,22 +90,21 @@ func (d *Differ) linesEqual(y int) bool {
 	if y >= d.oldScreen.height || y >= d.newScreen.height {
 		return false
 	}
-	
+
 	oldLine := d.oldScreen.lines[y]
 	newLine := d.newScreen.lines[y]
-	
+
 	if len(oldLine) != len(newLine) {
 		return false
 	}
-	
+
 	for x := 0; x < len(oldLine); x++ {
-		if oldLine[x].Rune != newLine[x].Rune {
+		// Compare rune and style
+		if oldLine[x].Rune != newLine[x].Rune || !stylesEqual(oldLine[x].Style, newLine[x].Style) {
 			return false
 		}
-		// For now, ignore style differences in comparison
-		// TODO: Compare styles when client supports it
 	}
-	
+
 	return true
 }
 
@@ -146,11 +113,11 @@ func (d *Differ) renderLine(screen *Screen, y int) string {
 	if y >= screen.height {
 		return ""
 	}
-	
+
 	line := screen.lines[y]
 	result := ""
 	currentStyle := NewStyle()
-	
+
 	// Find the last non-space character
 	lastNonSpace := -1
 	for i := len(line) - 1; i >= 0; i-- {
@@ -159,75 +126,55 @@ func (d *Differ) renderLine(screen *Screen, y int) string {
 			break
 		}
 	}
-	
+
 	// If entire line is spaces, return empty
 	if lastNonSpace == -1 {
 		return ""
 	}
-	
+
 	// Render up to last non-space
 	for x := 0; x <= lastNonSpace; x++ {
 		cell := line[x]
-		
+
 		// Check if style changed
 		if !stylesEqual(currentStyle, cell.Style) {
 			// Emit style change
 			result += renderStyleTransition(currentStyle, cell.Style)
 			currentStyle = cell.Style
 		}
-		
+
 		// Emit character
 		result += string(cell.Rune)
 	}
-	
-	// Reset style at end if needed
-	if !isDefaultStyle(currentStyle) {
-		result += "\x1b[0m"
-	}
-	
+
+
+
 	return result
 }
 
 // stylesEqual compares two styles for equality
 func stylesEqual(a, b Style) bool {
-	// This is a simplified comparison
-	// In a real implementation, we'd compare all style attributes
-	return a.String() == b.String()
+	return a.ToANSI() == b.ToANSI()
 }
 
 // isDefaultStyle checks if a style is the default (no attributes)
 func isDefaultStyle(s Style) bool {
-	return s.String() == "Style{}"
+	return s.ToANSI() == "" // Default style should have no ANSI codes
 }
 
 // renderStyleTransition renders ANSI codes to transition from one style to another
 func renderStyleTransition(from, to Style) string {
-	// For simplicity, always reset and apply new style
-	// A more sophisticated implementation would compute minimal transitions
+	if from.ToANSI() == to.ToANSI() {
+		return "" // No change in style, no transition needed
+	}
+
+	// If the target style is default, just reset
 	if isDefaultStyle(to) {
 		return "\x1b[0m"
 	}
-	
-	// Reset and apply new style
-	// This is inefficient but simple
-	result := "\x1b[0m"
-	
-	// Apply new style by rendering a dummy string and extracting codes
-	styled := to.Render("X")
-	if len(styled) > 1 {
-		// Find the ANSI codes
-		if styled[0] == '\x1b' {
-			// Extract everything up to 'm'
-			for i, r := range styled {
-				if r == 'm' {
-					result = styled[:i+1]
-					break
-				}
-			}
-		}
-	}
-	
-	return result
+
+	// Otherwise, reset and apply the new style
+	return fmt.Sprintf("\x1b[0m\x1b[%sm", to.ToANSI())
 }
 
 // ScreenDiffer manages stateful diffing between screen updates
@@ -247,19 +194,19 @@ func NewScreenDiffer(width, height int) *ScreenDiffer {
 	}
 }
 
-// Update computes diff operations for a new screen state
-func (sd *ScreenDiffer) Update(content string) []DiffOp {
+// Update computes diff operations for a new screen state and returns an ANSI string
+func (sd *ScreenDiffer) Update(content string) string {
 	// Create new screen and render content
 	newScreen := NewScreen(sd.width, sd.height)
 	newScreen.RenderFromString(content)
-	
+
 	// Compute diff
-	ops := sd.differ.Diff(sd.oldScreen, newScreen)
-	
+	ansiOutput := sd.differ.Diff(sd.oldScreen, newScreen)
+
 	// Update old screen
 	sd.oldScreen = newScreen
-	
-	return ops
+
+	return ansiOutput
 }
 
 // Resize updates the screen dimensions

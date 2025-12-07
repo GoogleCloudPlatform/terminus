@@ -83,8 +83,8 @@ func (e *Engine) Start() error {
 // Stop gracefully shuts down the engine
 func (e *Engine) Stop() {
 	e.cancel()
-	e.processor.Stop()
 	e.wg.Wait()
+	e.processor.Stop()
 	close(e.msgQueue)
 }
 

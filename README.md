@@ -64,69 +64,39 @@ Loading indicators with:
 
 ## 🚀 Quick Start
 
-### Installation
+Terminus provides a backend server that streams ANSI escape codes to compatible clients.
+You can run a server and connect to it using either a web browser or a native CLI client.
+
+### 1. Run the Terminus Server (e.g., Hello World example)
+
+First, navigate to one of the example applications (e.g., `examples/hello/`) and run the server:
 
 ```bash
-go get github.com/GoogleCloudPlatform/terminus
+cd examples/hello/
+go run .
+```
+The server will typically start on `http://localhost:8080` (or another port specified in the example).
+
+### 2. Connect with a Client
+
+#### Option A: Web Browser
+
+Open your web browser and navigate to the address printed by the server (e.g., `http://localhost:8080`). The Terminus application will render directly in your browser.
+
+#### Option B: Native CLI Client
+
+You can also connect using the native CLI client. First, build the client:
+
+```bash
+go build -o terminus-cli ../../cmd/terminus/main.go
 ```
 
-### Hello World Example
+Then, run the client:
 
-```go
-package main
-
-import (
-    "fmt"
-    "log"
-
-    "github.com/GoogleCloudPlatform/terminus/pkg/terminus"
-    "github.com/GoogleCloudPlatform/terminus/terminus/style"
-)
-
-type HelloWorld struct {
-    count int
-}
-
-func (h *HelloWorld) Init() terminus.Cmd {
-    return nil
-}
-
-func (h *HelloWorld) Update(msg terminus.Msg) (terminus.Component, terminus.Cmd) {
-    switch msg := msg.(type) {
-    case terminus.KeyMsg:
-        switch msg.Type {
-        case terminus.KeyUp:
-            h.count++
-        case terminus.KeyDown:
-            h.count--
-        case terminus.KeyEscape:
-            return h, terminus.Quit
-        }
-    }
-    return h, nil
-}
-
-func (h *HelloWorld) View() string {
-    title := style.New().Bold(true).Foreground(style.Cyan).Render("Terminus Counter")
-    counter := style.New().Bold(true).Render(fmt.Sprintf("Count: %d", h.count))
-    help := style.New().Faint(true).Render("↑/↓ to change • ESC to quit")
-
-    return fmt.Sprintf("%s\n\n%s\n\n%s", title, counter, help)
-}
-
-func main() {
-    program := terminus.NewProgram(
-        func() terminus.Component { return &HelloWorld{} },
-        terminus.WithAddress(":8080"),
-    )
-
-    fmt.Println("Starting on http://localhost:8080")
-    if err := program.Start(); err != nil {
-        log.Fatal(err)
-    }
-    program.Wait()
-}
+```bash
+./terminus-cli
 ```
+The CLI client will connect to the running Terminus server and render the application directly in your terminal.
 
 ## 📚 Documentation
 
@@ -155,24 +125,32 @@ All examples run on `http://localhost:8890` by default.
 
 ## 🏗️ Architecture
 
-Terminus uses a unique server-side architecture:
+Terminus now supports both web-based and native CLI frontends, all powered by a single Go backend that streams standard ANSI escape codes.
 
 ```
 ┌─────────────┐         WebSocket          ┌─────────────┐
 │   Browser   │ ◄──────────────────────► │  Go Server  │
-│             │         JSON Messages      │             │
-│ ┌─────────┐ │                           │ ┌─────────┐ │
-│ │  Thin   │ │                           │ │   MVU   │ │
-│ │ Client  │ │                           │ │ Engine  │ │
-│ └─────────┘ │                           │ └─────────┘ │
+│ ┌─────────┐ │         Raw ANSI           │             │
+│ │ Ghostty │ │        + JSON Control      │ ┌─────────┐ │
+│ │   Web   │ │                           │ │   MVU   │ │
+│ └─────────┘ │                           │ │ Engine  │ │
+│             │                           │ └─────────┘ │
+├─────────────┤                           ├─────────────┤
+│ Native CLI  │ ◄──────────────────────► │             │
+│   Client    │         Raw ANSI           │             │
+│ ┌─────────┐ │        + JSON Control      │             │
+│ │ x/term  │ │                           │             │
+│ └─────────┘ │                           │             │
 └─────────────┘                           └─────────────┘
 ```
 
 Key benefits:
 
+- **Unified Backend**: A single Go server powers both web and native CLI clients.
+- **Raw ANSI Streaming**: Efficiently renders terminal UI by sending standard ANSI escape codes.
 - **Zero client-side state** - All logic stays in Go
 - **Automatic UI updates** - Just update your model
-- **Secure by default** - No client-side code execution
+- **Secure by default** - No client-side code execution in the browser, minimal in CLI.
 - **Easy testing** - Pure functions throughout
 
 ## 🛠️ Development Status
@@ -180,7 +158,7 @@ Key benefits:
 ### ✅ Completed
 
 - Core MVU engine with component system
-- WebSocket communication layer
+- WebSocket communication layer (raw ANSI streaming)
 - Session management
 - Full ANSI styling system (16, 256, and RGB colors)
 - Efficient line-based diff algorithm
@@ -188,7 +166,8 @@ Key benefits:
 - Layout system with box drawing
 - HTTP command helpers
 - Comprehensive documentation
-- Enhanced JavaScript client with full color support
+- Web frontend with Ghostty-Web terminal (placeholder)
+- Native CLI client with raw terminal input/output
 
 ### 🚧 In Progress
 

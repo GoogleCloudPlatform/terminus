@@ -161,7 +161,7 @@ func TestProgramLifecycle(t *testing.T) {
 
 func TestWebSocketConnection(t *testing.T) {
 	factory := func() Component {
-		return &mockProgramComponent{}
+		return &mockProgramComponent{state: "initialized"}
 	}
 	
 	program := NewProgram(factory)
@@ -183,15 +183,15 @@ func TestWebSocketConnection(t *testing.T) {
 	}
 	defer conn.Close()
 	
-	// Should receive initial render
-	var msg ServerMessage
-	err = conn.ReadJSON(&msg)
+	// Should receive initial render (ANSI string)
+	_, p, err := conn.ReadMessage()
 	if err != nil {
 		t.Fatalf("Failed to read initial message: %v", err)
 	}
 	
-	if msg.Type != "render" {
-		t.Errorf("Expected initial render message, got type: %s", msg.Type)
+	expectedANSI := "\x1b[2J\x1b[H\x1b[1;1Hinitialized\x1b[0m"
+	if string(p) != expectedANSI {
+		t.Errorf("Expected initial ANSI render %q, got %q", expectedANSI, string(p))
 	}
 }
 
