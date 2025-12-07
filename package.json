@@ -1,0 +1,28 @@
+{
+  "name": "terminus",
+  "version": "1.0.0",
+  "description": "A Go framework for building terminal-style user interfaces that run in web browsers. Terminus brings the simplicity and power of terminal UIs to the web, using a Model-View-Update (MVU) architecture similar to Elm.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "example": "examples"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GoogleCloudPlatform/terminus.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/GoogleCloudPlatform/terminus/issues"
+  },
+  "homepage": "https://github.com/GoogleCloudPlatform/terminus#readme",
+  "dependencies": {
+    "ghostty-web": "^0.3.0"
+  }
+}
