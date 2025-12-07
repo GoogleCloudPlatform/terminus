@@ -1,1 +1,0 @@
-// Placeholder for Ghostty-Web JavaScript glue code.
