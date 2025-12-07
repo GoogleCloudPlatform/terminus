@@ -16,7 +16,6 @@ package main
 
 import (
 	"context"
-	"embed"
 	"fmt"
 	"log"
 	"os"
@@ -32,8 +31,7 @@ import (
 	"google.golang.org/api/option"
 )
 
-//go:embed all:static/*
-var staticFiles embed.FS
+
 
 // Message represents a chat message
 type Message struct {

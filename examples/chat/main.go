@@ -15,7 +15,6 @@
 package main
 
 import (
-	"embed"
 	"fmt"
 	"log"
 	"math/rand"
@@ -30,8 +29,7 @@ import (
 	"github.com/yourusername/terminusgo/pkg/terminus/widget"
 )
 
-//go:embed all:static/*
-var staticFiles embed.FS
+
 
 // Message represents a chat message
 type Message struct {

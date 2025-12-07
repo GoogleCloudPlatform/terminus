@@ -15,7 +15,6 @@
 package main
 
 import (
-	"embed"
 	"fmt"
 	"log"
 	"os"
@@ -29,8 +28,7 @@ import (
 	"github.com/yourusername/terminusgo/pkg/terminus/widget"
 )
 
-//go:embed all:static/*
-var staticFiles embed.FS
+
 
 // TodoItem represents a single todo item
 type TodoItem struct {

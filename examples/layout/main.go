@@ -15,7 +15,6 @@
 package main
 
 import (
-	"embed"
 	"fmt"
 	"log"
 	"os"
@@ -28,8 +27,7 @@ import (
 	"github.com/yourusername/terminusgo/pkg/terminus/widget"
 )
 
-//go:embed all:static/*
-var staticFiles embed.FS
+
 
 // LayoutDemo demonstrates various layout utilities
 type LayoutDemo struct {

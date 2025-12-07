@@ -15,7 +15,6 @@
 package main
 
 import (
-	"embed"
 	"fmt"
 	"log"
 	"math"
@@ -33,8 +32,7 @@ import (
 	"github.com/yourusername/terminusgo/pkg/terminus/widget"
 )
 
-//go:embed all:static/*
-var staticFiles embed.FS
+
 
 // SystemStats holds real-time system statistics
 type SystemStats struct {

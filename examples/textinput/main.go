@@ -15,7 +15,6 @@
 package main
 
 import (
-	"embed"
 	"fmt"
 	"log"
 	"os"
@@ -27,8 +26,7 @@ import (
 	"github.com/yourusername/terminusgo/pkg/terminus/widget"
 )
 
-//go:embed all:static/*
-var staticFiles embed.FS
+
 
 // TextInputExample demonstrates the TextInput widget functionality
 type TextInputExample struct {
@@ -237,7 +235,6 @@ func main() {
 	// Create program with static files
 	program := terminus.NewProgram(
 		factory,
-		terminus.WithStaticFiles(staticFiles, "static"),
 		terminus.WithAddress(":8890"),
 	)
 

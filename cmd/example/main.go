@@ -15,7 +15,6 @@
 package main
 
 import (
-	"embed"
 	"fmt"
 	"log"
 	"os"
@@ -25,8 +24,7 @@ import (
 	"github.com/yourusername/terminusgo/pkg/terminus"
 )
 
-//go:embed all:static/*
-var staticFiles embed.FS
+
 
 // HelloComponent is a simple example component
 type HelloComponent struct {
