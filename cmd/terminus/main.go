@@ -85,50 +85,68 @@ func main() {
 			}
 			
 			if n > 0 {
-				data := buf[:n]
+				log.Printf("Read %d bytes: %v", n, buf[:n])
 				
-				// Check for known escape sequences first (simplistic handling)
-				s := string(data)
-				if s == "\x1b[Z" { // Shift+Tab
-					msg := ClientMessage{
-						Type: "key",
-						Data: map[string]interface{}{
-							"keyType": "tab",
-							"modifiers": map[string]bool{"shift": true},
-						},
-					}
-					jsonBytes, _ := json.Marshal(msg)
-					c.WriteMessage(websocket.TextMessage, jsonBytes)
-					continue
-				}
-				
-				// Handle other escape sequences (arrows)
-				if len(s) >= 3 && s[0] == '\x1b' && s[1] == '[' {
-					var keyType string
-					switch s[2] {
-					case 'A': keyType = "up"
-					case 'B': keyType = "down"
-					case 'C': keyType = "right"
-					case 'D': keyType = "left"
-					}
-					if keyType != "" {
-						msg := ClientMessage{
-							Type: "key",
-							Data: map[string]interface{}{"keyType": keyType},
+				i := 0
+				for i < n {
+					char := buf[i]
+					var msg ClientMessage
+					handled := false
+
+					// Handle Escape Sequences
+					if char == '\x1b' {
+						remaining := n - i
+						// Shift+Tab: \x1b[Z
+						if remaining >= 3 && buf[i+1] == '[' && buf[i+2] == 'Z' {
+							log.Println("Detected Shift+Tab")
+							msg = ClientMessage{
+								Type: "key",
+								Data: map[string]interface{}{
+									"keyType": "tab",
+									"modifiers": map[string]bool{"shift": true},
+								},
+							}
+							i += 3
+							handled = true
+						} else if remaining >= 3 && buf[i+1] == '[' {
+							// Arrow keys: \x1b[A, \x1b[B, ...
+							var keyType string
+							switch buf[i+2] {
+							case 'A': keyType = "up"
+							case 'B': keyType = "down"
+							case 'C': keyType = "right"
+							case 'D': keyType = "left"
+							}
+							if keyType != "" {
+								log.Printf("Detected Arrow: %s", keyType)
+								msg = ClientMessage{
+									Type: "key",
+									Data: map[string]interface{}{"keyType": keyType},
+								}
+								i += 3
+								handled = true
+							}
 						}
+						
+						// If not handled above, treat as isolated Escape if it's the last byte or not a known sequence
+						if !handled {
+							log.Println("Detected Escape")
+							msg = ClientMessage{
+								Type: "key",
+								Data: map[string]interface{}{"keyType": "escape"},
+							}
+							i++ // Consume only the escape char
+							handled = true
+						}
+					}
+
+					if handled {
 						jsonBytes, _ := json.Marshal(msg)
 						c.WriteMessage(websocket.TextMessage, jsonBytes)
 						continue
 					}
-				}
 
-				// If not a known sequence, process byte by byte
-				// Note: This breaks if an unknown escape sequence is split or mixed with text
-				for _, char := range data {
-					log.Printf("Read byte: %d (%q)", char, char)
-
-					var msg ClientMessage
-					
+					// Handle Control and Regular Characters
 					switch {
 					case char == '\r' || char == '\n': // Enter
 						msg = ClientMessage{
@@ -145,11 +163,6 @@ func main() {
 							Type: "key",
 							Data: map[string]interface{}{"keyType": "tab"},
 						}
-					case char == '\x1b': // Escape (lonely escape)
-						msg = ClientMessage{
-							Type: "key",
-							Data: map[string]interface{}{"keyType": "escape"},
-						}
 					case char == '\x03': // Ctrl+C
 						log.Println("Detected Ctrl+C, exiting...")
 						msg = ClientMessage{
@@ -161,8 +174,9 @@ func main() {
 						}
 						jsonBytes, _ := json.Marshal(msg)
 						c.WriteMessage(websocket.TextMessage, jsonBytes)
-						return 
+						return
 					case char == '\x12': // Ctrl+R
+						log.Println("Detected Ctrl+R")
 						msg = ClientMessage{
 							Type: "key",
 							Data: map[string]interface{}{
@@ -171,6 +185,7 @@ func main() {
 							},
 						}
 					case char == '\x13': // Ctrl+S
+						log.Println("Detected Ctrl+S")
 						msg = ClientMessage{
 							Type: "key",
 							Data: map[string]interface{}{
@@ -185,6 +200,8 @@ func main() {
 						}
 					default:
 						// Treat as regular rune
+						// Note: This assumes single-byte runes (ASCII). UTF-8 multi-byte not fully handled here for simplicity.
+						log.Printf("Detected Rune: %q", char)
 						msg = ClientMessage{
 							Type: "key",
 							Data: map[string]interface{}{
@@ -197,14 +214,10 @@ func main() {
 					jsonBytes, err := json.Marshal(msg)
 					if err != nil {
 						log.Printf("Error marshaling key message: %v", err)
-						continue
+					} else {
+						c.WriteMessage(websocket.TextMessage, jsonBytes)
 					}
-
-					err = c.WriteMessage(websocket.TextMessage, jsonBytes)
-					if err != nil {
-						log.Printf("Error writing to WebSocket: %v", err)
-						return
-					}
+					i++
 				}
 			}
 		}
