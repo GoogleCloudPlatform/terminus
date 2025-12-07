@@ -34,22 +34,38 @@ func main() {
 	serverAddr := flag.String("addr", "localhost:8890", "Terminus server address")
 	flag.Parse()
 
-	log.SetFlags(0) // Disable timestamping for log messages
-	log.SetOutput(os.Stderr) // Log to stderr
+	// Setup file logging for debug
+	f, err := os.OpenFile("terminus-cli.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatalf("error opening file: %v", err)
+	}
+	defer f.Close()
+	log.SetOutput(f)
+
+	log.Println("--- Terminus CLI Client Started ---")
 	
 	fmt.Println("Terminus CLI client")
 
+	// Put terminal into raw mode
+	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
+	if err != nil {
+		log.Fatalf("Failed to put terminal into raw mode: %v", err)
+	}
+	defer term.Restore(int(os.Stdin.Fd()), oldState)
+
 	// Define WebSocket server URL
 	u := url.URL{Scheme: "ws", Host: *serverAddr, Path: "/ws"}
-	fmt.Printf("Connecting to %s\n", u.String())
+	log.Printf("Connecting to %s", u.String())
 
 	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
+		// We can't log to stderr easily in raw mode without messing up screen, 
+		// but Restore is deferred. We'll rely on the log file.
 		log.Fatalf("Failed to connect to WebSocket server: %v", err)
 	}
 	defer c.Close()
 
-	fmt.Println("Connected to WebSocket server.")
+	log.Println("Connected to WebSocket server.")
 
 	done := make(chan struct{}) // Channel to signal when to exit
 	
@@ -69,38 +85,46 @@ func main() {
 			}
 			
 			if n > 0 {
+				char := buf[0]
+				log.Printf("Read byte: %d (%q)", char, char)
+
 				// Wrap raw input in JSON protocol
 				var msg ClientMessage
-				char := buf[:n]
 				
 				// Basic mapping for control characters
 				switch {
-				case char[0] == '\r': // Enter
+				case char == '\r' || char == '\n': // Enter (Handle both CR and LF)
+					log.Println("Detected Enter")
 					msg = ClientMessage{
 						Type: "key",
 						Data: map[string]interface{}{"keyType": "enter"},
 					}
-				case char[0] == '\x7f': // Backspace
+				case char == '\x7f' || char == '\b': // Backspace (Handle DEL and BS)
 					msg = ClientMessage{
 						Type: "key",
 						Data: map[string]interface{}{"keyType": "backspace"},
 					}
-				case char[0] == '\t': // Tab
+				case char == '\t': // Tab
 					msg = ClientMessage{
 						Type: "key",
 						Data: map[string]interface{}{"keyType": "tab"},
 					}
-				case char[0] == '\x1b': // Escape
+				case char == '\x1b': // Escape
 					msg = ClientMessage{
 						Type: "key",
 						Data: map[string]interface{}{"keyType": "escape"},
 					}
-				case char[0] == '\x03': // Ctrl+C
+				case char == '\x03': // Ctrl+C
+					log.Println("Detected Ctrl+C, exiting...")
 					msg = ClientMessage{
 						Type: "key",
 						Data: map[string]interface{}{"keyType": "ctrl+c"},
 					}
-				case char[0] == ' ': // Space
+					// Send the message then exit
+					jsonBytes, _ := json.Marshal(msg)
+					c.WriteMessage(websocket.TextMessage, jsonBytes)
+					return 
+				case char == ' ': // Space
 					msg = ClientMessage{
 						Type: "key",
 						Data: map[string]interface{}{"keyType": "space"},
@@ -133,15 +157,19 @@ func main() {
 
 	// Goroutine to read from WebSocket and write to stdout
 	go func() {
-		defer close(done)
+		// We don't close 'done' here because the server closing 
+		// shouldn't necessarily kill the client input loop immediately, 
+		// but effectively it ends the session.
 		for {
 			messageType, message, err := c.ReadMessage()
 			if err != nil {
 				log.Printf("Error reading from WebSocket: %v", err)
+				close(done) // Signal exit
 				return
 			}
 			
 			if messageType == websocket.TextMessage {
+				// Direct pass-through of ANSI to stdout
 				os.Stdout.Write(message)
 			}
 		}
