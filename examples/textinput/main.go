@@ -35,6 +35,7 @@ type TextInputExample struct {
 	emailInput *widget.TextInput
 	phoneInput *widget.TextInput
 	result     string
+	lastKey    string // Debug info
 	submitted  bool
 }
 
@@ -122,6 +123,7 @@ func (ex *TextInputExample) Init() terminus.Cmd {
 func (ex *TextInputExample) Update(msg terminus.Msg) (terminus.Component, terminus.Cmd) {
 	switch msg := msg.(type) {
 	case terminus.KeyMsg:
+		ex.lastKey = msg.String() // Capture key for debug
 		switch msg.Type {
 		case terminus.KeyCtrlC:
 			return ex, terminus.Quit
@@ -213,6 +215,12 @@ func (ex *TextInputExample) View() string {
 		} else {
 			result.WriteString(errorStyle.Render(ex.result))
 		}
+		result.WriteString("\n")
+	}
+	
+	// Debug Info
+	if ex.lastKey != "" {
+		result.WriteString(instructionStyle.Render(fmt.Sprintf("Last Key: %s", ex.lastKey)))
 		result.WriteString("\n")
 	}
 

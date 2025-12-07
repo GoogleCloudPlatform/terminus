@@ -59,7 +59,7 @@ func NewTextInput() *TextInput {
 		style:           terminus.NewStyle(),
 		focusStyle:      terminus.NewStyle().Underline(true),
 		placeholderStyle: terminus.NewStyle().Faint(true),
-		cursorStyle:     terminus.NewStyle().Reverse(true),
+		cursorStyle:     terminus.NewStyle().Background(terminus.White).Foreground(terminus.Black),
 	}
 }
 
