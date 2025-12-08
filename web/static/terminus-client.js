@@ -36,7 +36,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     try {
         terminal = new Terminal({
-            cursorBlink: true,
+            cursorBlink: false, // Disable blinking to match non-blinking CLI cursor
             fontSize: 14,
             fontFamily: 'Menlo, Monaco, "Courier New", monospace',
             theme: {
@@ -61,6 +61,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsURL = `${wsProtocol}//${window.location.host}/ws`;
     const ws = new WebSocket(wsURL);
+
+    // Prevent browser-level actions for shortcuts we handle (save/reload)
+    window.addEventListener('keydown', (e) => {
+        const isCtrlLike = e.ctrlKey || e.metaKey;
+        if (isCtrlLike && (e.key === 's' || e.key === 'S' || e.key === 'r' || e.key === 'R')) {
+            e.preventDefault();
+        }
+    });
 
     ws.onopen = () => {
         console.log('WebSocket connection opened.');

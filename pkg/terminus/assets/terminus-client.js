@@ -36,7 +36,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     try {
         terminal = new Terminal({
-            cursorBlink: true,
+            cursorBlink: false, // Disable blinking to match CLI cursor
             fontSize: 14,
             fontFamily: 'Menlo, Monaco, "Courier New", monospace',
             theme: {
@@ -50,6 +50,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         terminal.open(terminalElement);
         fitAddon.fit();
+
+        // Hide the built-in terminal cursor; the app renders its own.
+        terminal.write('\x1b[?25l');
         
         console.log('Ghostty-Web terminal opened.');
     } catch (e) {
@@ -61,6 +64,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsURL = `${wsProtocol}//${window.location.host}/ws`;
     const ws = new WebSocket(wsURL);
+
+    // Prevent browser-level actions for shortcuts we handle (save/reload)
+    window.addEventListener('keydown', (e) => {
+        const isCtrlLike = e.ctrlKey || e.metaKey;
+        if (isCtrlLike && (e.key === 's' || e.key === 'S' || e.key === 'r' || e.key === 'R')) {
+            e.preventDefault();
+        }
+    });
 
     ws.onopen = () => {
         console.log('WebSocket connection opened.');
@@ -99,6 +110,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         let msgType = 'key';
         let keyData = { keyType: 'runes', runes: [] };
+        let modifiers = { alt: false, ctrl: false, shift: false };
 
         // Basic control code mapping
         switch (data) {
@@ -116,6 +128,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 break;
             case '\x03': // Ctrl+C
                 keyData.keyType = 'ctrl+c';
+                modifiers.ctrl = true;
+                break;
+            case '\x12': // Ctrl+R
+                keyData.keyType = 'ctrl+r';
+                modifiers.ctrl = true;
+                break;
+            case '\x13': // Ctrl+S
+                keyData.keyType = 'ctrl+s';
+                modifiers.ctrl = true;
                 break;
             case ' ':
                 keyData.keyType = 'space';
@@ -145,7 +166,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const clientMessage = {
             Type: msgType,
-            Data: keyData,
+            Data: { ...keyData, modifiers },
         };
         ws.send(JSON.stringify(clientMessage));
     });
