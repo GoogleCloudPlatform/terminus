@@ -8,7 +8,7 @@ Demonstrates core widgets: text input, list with filter, table with selection/so
 
 ## Controls
 - `1`-`5`: switch views (TextInput, List, Table, Spinner, All)
-- `Tab` (in All view): move focus across sections
+- `Tab` (in All view): move focus across sections (TextInput starts focused)
 - `l`: toggle spinner
 - `n`: cycle spinner style
 - `s`: sort table (when in Table view)

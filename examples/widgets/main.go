@@ -190,6 +190,9 @@ func NewWidgetShowcase() *WidgetShowcase {
 	showcase.list.SetSize(40, 8)
 	showcase.table.SetSize(50, 10)
 
+	// Default focus on text input
+	showcase.textInput.Focus()
+
 	return showcase
 }
 
@@ -244,7 +247,9 @@ func (w *WidgetShowcase) Update(msg terminus.Msg) (terminus.Component, terminus.
 				case 's', 'S':
 					// Sort table by current column (when in table view)
 					if w.currentView == ViewTable {
-						return w.table.Update(msg)
+						newTable, cmd := w.table.Update(msg)
+						w.table = newTable.(*widget.Table)
+						return w, cmd
 					}
 				}
 			}
@@ -277,30 +282,46 @@ func (w *WidgetShowcase) Update(msg terminus.Msg) (terminus.Component, terminus.
 		// Forward to appropriate widget based on view
 		switch w.currentView {
 		case ViewTextInput:
-			return w.textInput.Update(msg)
+			newInput, cmd := w.textInput.Update(msg)
+			w.textInput = newInput.(*widget.TextInput)
+			return w, cmd
 		case ViewList:
 			// Check if filter input is focused
 			if w.filterInput.Focused() {
-				return w.filterInput.Update(msg)
+				newFilter, cmd := w.filterInput.Update(msg)
+				w.filterInput = newFilter.(*widget.TextInput)
+				return w, cmd
 			}
-			return w.list.Update(msg)
+			newList, cmd := w.list.Update(msg)
+			w.list = newList.(*widget.List)
+			return w, cmd
 		case ViewTable:
-			return w.table.Update(msg)
+			newTable, cmd := w.table.Update(msg)
+			w.table = newTable.(*widget.Table)
+			return w, cmd
 		case ViewSpinner:
-			return w.spinner.Update(msg)
+			newSpinner, cmd := w.spinner.Update(msg)
+			w.spinner = newSpinner.(*widget.Spinner)
+			return w, cmd
 		case ViewAll:
 			// Forward to focused widget
 			switch w.focusedSection {
 			case 0:
-				return w.textInput.Update(msg)
+				newInput, cmd := w.textInput.Update(msg)
+				w.textInput = newInput.(*widget.TextInput)
+				return w, cmd
 			case 1:
 				newFilter, cmd := w.filterInput.Update(msg)
 				w.filterInput = newFilter.(*widget.TextInput)
 				return w, cmd
 			case 2:
-				return w.list.Update(msg)
+				newList, cmd := w.list.Update(msg)
+				w.list = newList.(*widget.List)
+				return w, cmd
 			case 3:
-				return w.table.Update(msg)
+				newTable, cmd := w.table.Update(msg)
+				w.table = newTable.(*widget.Table)
+				return w, cmd
 			}
 		}
 
