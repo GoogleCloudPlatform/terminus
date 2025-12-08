@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"golang.org/x/sys/unix"
 	"golang.org/x/term"
 )
 
@@ -43,15 +44,20 @@ func main() {
 	log.SetOutput(f)
 
 	log.Println("--- Terminus CLI Client Started ---")
-	
+
 	fmt.Println("Terminus CLI client")
 
 	// Put terminal into raw mode
-	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
+	stdinFD := int(os.Stdin.Fd())
+	oldState, err := term.MakeRaw(stdinFD)
 	if err != nil {
 		log.Fatalf("Failed to put terminal into raw mode: %v", err)
 	}
-	defer term.Restore(int(os.Stdin.Fd()), oldState)
+	defer term.Restore(stdinFD, oldState)
+
+	if err := disableSoftwareFlowControl(stdinFD); err != nil {
+		log.Printf("Warning: failed to disable software flow control (IXON): %v", err)
+	}
 
 	// Define WebSocket server URL
 	u := url.URL{Scheme: "ws", Host: *serverAddr, Path: "/ws"}
@@ -59,7 +65,7 @@ func main() {
 
 	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
-		// We can't log to stderr easily in raw mode without messing up screen, 
+		// We can't log to stderr easily in raw mode without messing up screen,
 		// but Restore is deferred. We'll rely on the log file.
 		log.Fatalf("Failed to connect to WebSocket server: %v", err)
 	}
@@ -68,10 +74,10 @@ func main() {
 	log.Println("Connected to WebSocket server.")
 
 	done := make(chan struct{}) // Channel to signal when to exit
-	
+
 	// Channel for input data
 	inputChan := make(chan []byte)
-	
+
 	// Goroutine to read stdin
 	go func() {
 		defer close(inputChan)
@@ -98,25 +104,47 @@ func main() {
 	// Goroutine to parse input and send messages
 	go func() {
 		defer close(done)
-		
+
 		const (
 			StateNormal = iota
 			StateEsc
 			StateCSI
 		)
-		
+
 		state := StateNormal
 		var buffer []byte
-		
+
 		// Timer for escape sequence timeout
-		escapeTimer := time.NewTimer(50 * time.Millisecond)
+		const escapeTimeout = 200 * time.Millisecond
+
+		escapeTimer := time.NewTimer(escapeTimeout)
+		// Keep the timer drained/stopped until we need it.
 		if !escapeTimer.Stop() {
 			select {
 			case <-escapeTimer.C:
 			default:
 			}
 		}
-		
+
+		resetEscapeTimer := func() {
+			if !escapeTimer.Stop() {
+				select {
+				case <-escapeTimer.C:
+				default:
+				}
+			}
+			escapeTimer.Reset(escapeTimeout)
+		}
+
+		stopEscapeTimer := func() {
+			if !escapeTimer.Stop() {
+				select {
+				case <-escapeTimer.C:
+				default:
+				}
+			}
+		}
+
 		// Helper to send a message
 		sendMsg := func(msg ClientMessage) {
 			jsonBytes, err := json.Marshal(msg)
@@ -126,11 +154,13 @@ func main() {
 			}
 			c.WriteMessage(websocket.TextMessage, jsonBytes)
 		}
-		
+
 		// Process a completed CSI sequence
 		handleCSI := func(seq []byte) {
-			if len(seq) < 3 { return } // Should be at least ESC [ X
-			
+			if len(seq) < 3 {
+				return
+			} // Should be at least ESC [ X
+
 			final := seq[len(seq)-1]
 			switch final {
 			case 'Z': // Shift+Tab: ESC [ Z
@@ -138,7 +168,7 @@ func main() {
 				sendMsg(ClientMessage{
 					Type: "key",
 					Data: map[string]interface{}{
-						"keyType": "tab",
+						"keyType":   "tab",
 						"modifiers": map[string]bool{"shift": true},
 					},
 				})
@@ -155,7 +185,7 @@ func main() {
 				log.Printf("Unknown CSI sequence: %q", seq)
 			}
 		}
-		
+
 		// Helper to flush buffer as raw runes
 		flushBuffer := func() {
 			for _, b := range buffer {
@@ -183,16 +213,16 @@ func main() {
 				if !ok {
 					return
 				}
-				
+
 				log.Printf("Read %d bytes: %v", len(chunk), chunk)
-				
+
 				for _, b := range chunk {
 					switch state {
 					case StateNormal:
 						if b == '\x1b' {
 							state = StateEsc
 							buffer = append(buffer, b)
-							escapeTimer.Reset(50 * time.Millisecond)
+							resetEscapeTimer()
 						} else {
 							// Handle Normal Key
 							switch b {
@@ -205,7 +235,7 @@ func main() {
 							case '\x03': // Ctrl+C
 								log.Println("Detected Ctrl+C")
 								sendMsg(ClientMessage{
-									Type: "key", 
+									Type: "key",
 									Data: map[string]interface{}{"keyType": "ctrl+c", "modifiers": map[string]bool{"ctrl": true}},
 								})
 								return // Exit
@@ -233,47 +263,47 @@ func main() {
 								})
 							}
 						}
-						
+
 					case StateEsc:
 						buffer = append(buffer, b)
 						if b == '[' {
 							state = StateCSI
+							resetEscapeTimer()
 						} else {
 							// Not CSI (e.g. Alt+Key or SS3 \x1bO)
 							// For now, just flush (treat as Esc + Key)
 							// Ideally we handle \x1bO for F-keys here too
 							flushBuffer()
-							if !escapeTimer.Stop() {
-								select { case <-escapeTimer.C: default: }
-							}
+							stopEscapeTimer()
 						}
-						
+
 					case StateCSI:
 						buffer = append(buffer, b)
+						// Extend timeout while we accumulate the sequence to avoid flushing mid-CSI.
+						resetEscapeTimer()
 						// Check for final byte (0x40-0x7E)
 						if b >= 0x40 && b <= 0x7E {
 							handleCSI(buffer)
 							buffer = nil
 							state = StateNormal
-							if !escapeTimer.Stop() {
-								select { case <-escapeTimer.C: default: }
-							}
+							stopEscapeTimer()
 						}
 					}
 				}
-				
+
 			case <-escapeTimer.C:
 				// Timeout waiting for sequence completion
 				log.Println("Escape sequence timeout, flushing buffer")
 				flushBuffer()
+				stopEscapeTimer()
 			}
 		}
 	}()
 
 	// Goroutine to read from WebSocket and write to stdout
 	go func() {
-		// We don't close 'done' here because the server closing 
-		// shouldn't necessarily kill the client input loop immediately, 
+		// We don't close 'done' here because the server closing
+		// shouldn't necessarily kill the client input loop immediately,
 		// but effectively it ends the session.
 		for {
 			messageType, message, err := c.ReadMessage()
@@ -282,7 +312,7 @@ func main() {
 				close(done) // Signal exit
 				return
 			}
-			
+
 			if messageType == websocket.TextMessage {
 				// Direct pass-through of ANSI to stdout
 				os.Stdout.Write(message)
@@ -364,4 +394,15 @@ func sendResizeMessage(conn *websocket.Conn) {
 	if err != nil {
 		log.Printf("Error sending resize message: %v", err)
 	}
+}
+
+func disableSoftwareFlowControl(fd int) error {
+	termios, err := unix.IoctlGetTermios(fd, unix.TIOCGETA)
+	if err != nil {
+		return err
+	}
+
+	termios.Iflag &^= unix.IXON | unix.IXOFF | unix.IXANY
+
+	return unix.IoctlSetTermios(fd, unix.TIOCSETA, termios)
 }

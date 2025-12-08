@@ -27,3 +27,4 @@ The project is stable and ready for use.
 - **Web:** Run `go run examples/<name>/main.go` and visit `http://localhost:8890`.
 - **CLI:** **CRITICAL:** Rebuild with `make build-cli` to get the parser fixes. Run `make run-cli` (after starting a server).
 - **Tests:** All tests pass (`make test`).
+- **Pending Validation:** New CLI input tweaks (explicit IXON disable, extended escape buffering) need retest on macOS iTerm2/Terminal/Ghostty to confirm `Shift+Tab`, `Ctrl+S`, and `Ctrl+R` reach the app and the block cursor remains visible.

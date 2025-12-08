@@ -24,26 +24,26 @@ import (
 // TextInput is a single-line text input widget
 type TextInput struct {
 	Model
-	
+
 	// Input state
 	value       string
 	placeholder string
 	cursor      int
-	
+
 	// Display settings
-	showCursor   bool
-	cursorChar   rune
-	maxLength    int
-	
+	showCursor bool
+	cursorChar rune
+	maxLength  int
+
 	// Styling
-	style           terminus.Style
-	focusStyle      terminus.Style
+	style            terminus.Style
+	focusStyle       terminus.Style
 	placeholderStyle terminus.Style
-	cursorStyle     terminus.Style
-	
+	cursorStyle      terminus.Style
+
 	// Validation
 	validator func(string) bool
-	
+
 	// Events
 	onSubmit func(string) terminus.Cmd
 	onChange func(string) terminus.Cmd
@@ -52,14 +52,19 @@ type TextInput struct {
 // NewTextInput creates a new text input widget
 func NewTextInput() *TextInput {
 	return &TextInput{
-		Model:           NewModel(),
-		showCursor:      true,
-		cursorChar:      ' ', // Solid block cursor
-		maxLength:       100,
-		style:           terminus.NewStyle(),
-		focusStyle:      terminus.NewStyle().Underline(true),
+		Model:            NewModel(),
+		showCursor:       true,
+		cursorChar:       '█', // Solid block glyph for maximum visibility
+		maxLength:        100,
+		style:            terminus.NewStyle(),
+		focusStyle:       terminus.NewStyle().Underline(true),
 		placeholderStyle: terminus.NewStyle().Faint(true),
-		cursorStyle:     terminus.NewStyle().Background(terminus.White).Foreground(terminus.Black),
+		// High-contrast cursor styling (bright white block on black)
+		// High-contrast cursor: bright magenta block with bright white glyph.
+		cursorStyle: terminus.NewStyle().
+			Background(terminus.BrightMagenta).
+			Foreground(terminus.BrightWhite).
+			Bold(true),
 	}
 }
 
@@ -150,9 +155,9 @@ func (t *TextInput) Update(msg terminus.Msg) (terminus.Component, terminus.Cmd) 
 	if !t.Focused() {
 		return t, nil
 	}
-	
+
 	var cmd terminus.Cmd
-	
+
 	switch msg := msg.(type) {
 	case terminus.KeyMsg:
 		switch msg.Type {
@@ -160,7 +165,7 @@ func (t *TextInput) Update(msg terminus.Msg) (terminus.Component, terminus.Cmd) 
 			if t.onSubmit != nil {
 				cmd = t.onSubmit(t.value)
 			}
-			
+
 		case terminus.KeyBackspace:
 			if t.cursor > 0 && len(t.value) > 0 {
 				// Remove character before cursor
@@ -170,7 +175,7 @@ func (t *TextInput) Update(msg terminus.Msg) (terminus.Component, terminus.Cmd) 
 					cmd = t.onChange(t.value)
 				}
 			}
-			
+
 		case terminus.KeyDelete:
 			if t.cursor < len(t.value) {
 				// Remove character at cursor
@@ -179,23 +184,23 @@ func (t *TextInput) Update(msg terminus.Msg) (terminus.Component, terminus.Cmd) 
 					cmd = t.onChange(t.value)
 				}
 			}
-			
+
 		case terminus.KeyLeft:
 			if t.cursor > 0 {
 				t.cursor--
 			}
-			
+
 		case terminus.KeyRight:
 			if t.cursor < len(t.value) {
 				t.cursor++
 			}
-			
+
 		case terminus.KeyHome:
 			t.cursor = 0
-			
+
 		case terminus.KeyEnd:
 			t.cursor = len(t.value)
-			
+
 		case terminus.KeySpace:
 			// Handle space key
 			if len(t.value) < t.maxLength {
@@ -208,7 +213,7 @@ func (t *TextInput) Update(msg terminus.Msg) (terminus.Component, terminus.Cmd) 
 					}
 				}
 			}
-			
+
 		case terminus.KeyRunes:
 			// Insert characters at cursor position
 			for _, r := range msg.Runes {
@@ -226,7 +231,7 @@ func (t *TextInput) Update(msg terminus.Msg) (terminus.Component, terminus.Cmd) 
 			}
 		}
 	}
-	
+
 	return t, cmd
 }
 
@@ -235,15 +240,15 @@ func (t *TextInput) View() string {
 	// Determine what to display
 	displayValue := t.value
 	showPlaceholder := len(t.value) == 0
-	
+
 	if showPlaceholder {
 		displayValue = t.placeholder
 	}
-	
+
 	// Calculate display bounds based on width
 	start := 0
 	end := len(displayValue)
-	
+
 	// If content is longer than width, scroll to show cursor
 	if len(displayValue) > t.width {
 		if t.cursor >= t.width {
@@ -254,60 +259,55 @@ func (t *TextInput) View() string {
 			end = len(displayValue)
 		}
 	}
-	
+
 	// Extract visible portion
 	visibleValue := ""
 	if end > start {
 		visibleValue = displayValue[start:end]
 	}
-	
+
 	// Pad to full width
 	visibleValue = padRight(visibleValue, t.width)
-	
-	// Build the final rendered output
-	if showPlaceholder {
-		return t.placeholderStyle.Render(visibleValue)
-	}
-	
-	// Determine base style
+
+	// Determine base style (keep placeholder styling but still render cursor)
 	baseStyle := t.style
-	if t.Focused() {
+	switch {
+	case showPlaceholder:
+		baseStyle = t.placeholderStyle
+	case t.Focused():
 		baseStyle = t.focusStyle
 	}
-	
+
 	// Handle cursor display
 	if t.Focused() && t.showCursor {
 		cursorPos := t.cursor - start
-		if cursorPos >= 0 && cursorPos <= t.width {
-			// Style the parts separately
-			var result string
-			
-			// Part before cursor
-			if cursorPos > 0 {
-				result += baseStyle.Render(visibleValue[:cursorPos])
-			}
-			
-			// Cursor character
-			if cursorPos < len(visibleValue) {
-				char := []rune(visibleValue)[cursorPos]
-				if char == ' ' {
-					char = t.cursorChar
-				}
-				result += t.cursorStyle.Render(string(char))
-				
-				// Part after cursor
-				if cursorPos+1 < len(visibleValue) {
-					result += baseStyle.Render(visibleValue[cursorPos+1:])
-				}
-			} else {
-				// Cursor at end
-				result += t.cursorStyle.Render(string(t.cursorChar))
-			}
-			
-			return result
+		// Clamp cursor inside visible window to avoid skipping render
+		if cursorPos < 0 {
+			cursorPos = 0
 		}
+		if cursorPos > t.width {
+			cursorPos = t.width
+		}
+
+		// Style the parts separately
+		var result string
+
+		// Part before cursor
+		if cursorPos > 0 {
+			result += baseStyle.Render(visibleValue[:cursorPos])
+		}
+
+		// Render cursor as its own styled segment to avoid overwrites
+		result += t.cursorStyle.Render(string(t.cursorChar))
+
+		// Part after cursor (if any)
+		if cursorPos < len(visibleValue) && cursorPos+1 < len(visibleValue) {
+			result += baseStyle.Render(visibleValue[cursorPos+1:])
+		}
+
+		return result
 	}
-	
+
 	// No cursor, just apply base style
 	return baseStyle.Render(visibleValue)
 }

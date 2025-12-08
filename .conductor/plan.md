@@ -100,3 +100,13 @@
 
 - [x] **Implement State Machine:** Refactor `terminus-cli` to use a state machine (Normal -> Escape -> CSI) to buffer and parse sequences like `\x1b[Z` reliably.
 - [x] **Verify Fixes:** Confirm `Shift+Tab` and `Ctrl+S` behavior with the new parser.
+
+## Phase 11: CLI Input Bugfix Sprint
+**Goal:** Address the remaining user-reported CLI issues: Shift+Tab parsing, Ctrl+S/Ctrl+R handling, and cursor visibility.
+
+- [ ] **Harden Escape Parsing:** Make the CLI input loop buffer incomplete escape sequences across reads so Shift+Tab (`\x1b[Z`) and similar CSI combos never leak literal `[`/`Z` characters.
+- [ ] **Add Coverage for Split Reads:** Introduce tests or a reproducible harness that feeds split escape sequences into the parser to prove Shift+Tab and other modified keys are decoded correctly.
+- [ ] **Fix Ctrl+S/Ctrl+R Delivery:** Ensure raw mode truly disables flow control (explicit IXON off), verify byte 19/18 reach the parser, and emit the correct modifier payloads to the server.
+- [ ] **Validate Server Mapping:** Recheck `pkg/terminus/session.go` mapping for `ctrl+s`/`ctrl+r` (and shift-modified Tab) to guarantee the engine receives the intended `KeyMsg`.
+- [ ] **Confirm Cursor Behavior:** Manually validate the non-blinking block cursor is visible on startup in the CLI `textinput` example and adjust styling if necessary.
+- [ ] **Cross-Terminal Validation:** Reproduce and verify fixes in macOS iTerm2 (primary), plus spot-check macOS Terminal and Ghostty to catch terminal-driver differences.
