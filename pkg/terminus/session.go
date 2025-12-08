@@ -30,20 +30,20 @@ type Session struct {
 	conn      *websocket.Conn
 	component Component
 	engine    *Engine
-	
+
 	// Message channels
 	incoming chan []byte
 	outgoing chan []byte
-	
+
 	// Rendering
 	screenDiffer *ScreenDiffer
-	
+
 	// State
-	mu       sync.RWMutex
-	closed   bool
+	mu        sync.RWMutex
+	closed    bool
 	closeOnce sync.Once
-	width    int
-	height   int
+	width     int
+	height    int
 }
 
 // NewSession creates a new session
@@ -54,16 +54,16 @@ func NewSession(id string, conn *websocket.Conn, component Component) *Session {
 		component:    component,
 		incoming:     make(chan []byte, 100),
 		outgoing:     make(chan []byte, 100),
-		width:        80,  // Default dimensions
+		width:        80, // Default dimensions
 		height:       24,
 		screenDiffer: NewScreenDiffer(80, 24),
 	}
-	
+
 	// Create engine with callbacks
 	s.engine = NewEngine(component)
 	s.engine.SetRenderCallback(s.handleRender)
 	s.engine.SetQuitCallback(s.handleQuit)
-	
+
 	return s
 }
 
@@ -75,38 +75,38 @@ func (s *Session) ID() string {
 // Run starts the session
 func (s *Session) Run(ctx context.Context) {
 	defer s.Close()
-	
+
 	// Start engine
 	if err := s.engine.Start(); err != nil {
 		fmt.Printf("Failed to start engine for session %s: %v\n", s.id, err)
 		return
 	}
 	defer s.engine.Stop()
-	
+
 	// Start goroutines
 	var wg sync.WaitGroup
-	
+
 	// WebSocket reader
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		s.readPump()
 	}()
-	
+
 	// WebSocket writer
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		s.writePump(ctx)
 	}()
-	
+
 	// Message processor
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		s.processMessages(ctx)
 	}()
-	
+
 	// Wait for context cancellation or session close
 	<-ctx.Done()
 	s.Close()
@@ -116,10 +116,15 @@ func (s *Session) Run(ctx context.Context) {
 // Close closes the session
 func (s *Session) Close() {
 	s.closeOnce.Do(func() {
+		// Stop engine first so it won't render into closed channels.
+		if s.engine != nil {
+			s.engine.Stop()
+		}
+
 		s.mu.Lock()
 		s.closed = true
 		s.mu.Unlock()
-		
+
 		close(s.incoming)
 		close(s.outgoing)
 		if s.conn != nil {
@@ -131,13 +136,13 @@ func (s *Session) Close() {
 // readPump reads messages from the WebSocket connection
 func (s *Session) readPump() {
 	defer s.Close()
-	
+
 	s.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 	s.conn.SetPongHandler(func(string) error {
 		s.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 		return nil
 	})
-	
+
 	for {
 		_, message, err := s.conn.ReadMessage()
 		if err != nil {
@@ -146,15 +151,15 @@ func (s *Session) readPump() {
 			}
 			break
 		}
-		
+
 		s.mu.RLock()
 		closed := s.closed
 		s.mu.RUnlock()
-		
+
 		if closed {
 			break
 		}
-		
+
 		select {
 		case s.incoming <- message:
 		default:
@@ -167,7 +172,7 @@ func (s *Session) readPump() {
 func (s *Session) writePump(ctx context.Context) {
 	ticker := time.NewTicker(54 * time.Second)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case message, ok := <-s.outgoing:
@@ -176,16 +181,17 @@ func (s *Session) writePump(ctx context.Context) {
 				s.conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
-			
+
 			if err := s.conn.WriteMessage(websocket.TextMessage, message); err != nil {
-				return			}
-			
+				return
+			}
+
 		case <-ticker.C:
 			s.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
 			if err := s.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
 			}
-			
+
 		case <-ctx.Done():
 			return
 		}
@@ -200,20 +206,20 @@ func (s *Session) processMessages(ctx context.Context) {
 			if !ok {
 				return
 			}
-			
+
 			// Parse message
 			var msg ClientMessage
 			if err := json.Unmarshal(message, &msg); err != nil {
 				fmt.Printf("Failed to parse message from session %s: %v\n", s.id, err)
 				continue
 			}
-			
+
 			// Convert to terminus message
 			terminusMsg := s.clientToTerminusMessage(msg)
 			if terminusMsg != nil {
 				s.engine.SendMessage(terminusMsg)
 			}
-			
+
 		case <-ctx.Done():
 			return
 		}
@@ -223,16 +229,20 @@ func (s *Session) processMessages(ctx context.Context) {
 // handleRender is called when the engine renders a new view
 func (s *Session) handleRender(view string) {
 	s.mu.RLock()
+	if s.closed {
+		s.mu.RUnlock()
+		return
+	}
 	width := s.width
 	height := s.height
 	s.mu.RUnlock()
-	
+
 	// Ensure screen differ has correct dimensions
 	s.screenDiffer.Resize(width, height)
-	
+
 	// Compute diff operations (ANSI string)
 	ansiOutput := s.screenDiffer.Update(view)
-	
+
 	// Send raw ANSI string to client
 	if ansiOutput != "" {
 		select {
@@ -254,7 +264,7 @@ func (s *Session) clientToTerminusMessage(msg ClientMessage) Msg {
 	case "key":
 		if keyData, ok := msg.Data.(map[string]interface{}); ok {
 			keyType, _ := keyData["keyType"].(string)
-			
+
 			// Parse modifiers
 			var alt, ctrl, shift bool
 			if mods, ok := keyData["modifiers"].(map[string]interface{}); ok {
@@ -262,7 +272,7 @@ func (s *Session) clientToTerminusMessage(msg ClientMessage) Msg {
 				ctrl, _ = mods["ctrl"].(bool)
 				shift, _ = mods["shift"].(bool)
 			}
-			
+
 			// Helper to create KeyMsg with modifiers
 			newKeyMsg := func(t KeyType, runes ...rune) KeyMsg {
 				return KeyMsg{
@@ -314,32 +324,33 @@ func (s *Session) clientToTerminusMessage(msg ClientMessage) Msg {
 				return newKeyMsg(KeyCtrlS)
 			}
 		}
-		
+
 	case "resize":
-					if resizeData, ok := msg.Data.(map[string]interface{}); ok {
-						width, widthOk := resizeData["width"].(float64)
-						height, heightOk := resizeData["height"].(float64)
-						
-						if !widthOk || !heightOk || width <= 0 || height <= 0 {
-							fmt.Printf("Invalid resize dimensions received from session %s: width=%.0f, height=%.0f\n", s.id, width, height)
-							return nil
-						}
-						
-						// Update session dimensions
-						s.mu.Lock()
-						s.width = int(width)
-						s.height = int(height)
-						s.mu.Unlock()
-						
-						// Update screen differ
-						s.screenDiffer.Resize(int(width), int(height))
-						
-						return WindowSizeMsg{
-							Width:  int(width),
-							Height: int(height),
-						}
-					}	}
-	
+		if resizeData, ok := msg.Data.(map[string]interface{}); ok {
+			width, widthOk := resizeData["width"].(float64)
+			height, heightOk := resizeData["height"].(float64)
+
+			if !widthOk || !heightOk || width <= 0 || height <= 0 {
+				fmt.Printf("Invalid resize dimensions received from session %s: width=%.0f, height=%.0f\n", s.id, width, height)
+				return nil
+			}
+
+			// Update session dimensions
+			s.mu.Lock()
+			s.width = int(width)
+			s.height = int(height)
+			s.mu.Unlock()
+
+			// Update screen differ
+			s.screenDiffer.Resize(int(width), int(height))
+
+			return WindowSizeMsg{
+				Width:  int(width),
+				Height: int(height),
+			}
+		}
+	}
+
 	return nil
 }
 
