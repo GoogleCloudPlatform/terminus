@@ -1,3 +1,7 @@
+
+**🛑 Project Status: Archived**
+This demo repository is archived and will no longer receive updates.
+
 # Terminus
 
 A Go framework for building terminal-style user interfaces that run in web browsers. Terminus brings the simplicity and power of terminal UIs to the web, using a Model-View-Update (MVU) architecture similar to Elm.
@@ -189,33 +193,6 @@ Key benefits:
 - HTTP command helpers
 - Comprehensive documentation
 - Enhanced JavaScript client with full color support
-
-### 🚧 In Progress
-
-- Performance optimizations
-- Mouse support
-- Browser compatibility testing
-- Security hardening
-
-### 📋 Planned
-
-- Additional widgets (Progress, Select, Tree)
-- Hot reload for development
-- DevTools browser extension
-- Plugin system
-
-## 🤝 Contributing
-
-We welcome contributions! Areas where you can help:
-
-- 📝 Documentation improvements
-- 🐛 Bug reports and fixes
-- ✨ New widget implementations
-- 🎨 Example applications
-- 🌍 Internationalization
-- ⚡ Performance optimizations
-
-Please see our [Contributing Guide](CONTRIBUTING.md) (coming soon).
 
 ## 📄 License
 
